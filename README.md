@@ -21,7 +21,7 @@ Dino-Bill adalah sistem manajemen billing dan operasional ISP (Internet Service 
 Jalankan perintah satu baris ini di terminal Ubuntu Anda:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/heruhendri/Dino-Bill/main/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/heruhendri/Dino-Bill/public/install.sh | bash
 ```
 
 ## Instalasi Manual
