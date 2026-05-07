@@ -36,7 +36,7 @@ rm google-chrome-stable_current_amd64.deb
 # Clone and Install App (If not exists)
 if [ ! -d "Dino-Bill" ]; then
     echo "Cloning Dino-Bill repository..."
-    git clone https://github.com/ittosolution-png/Dino-Bill.git
+    git clone https://github.com/heruhendri/Dino-Bill.git
     cd Dino-Bill
     PUPPETEER_SKIP_DOWNLOAD=true npm install
 else
