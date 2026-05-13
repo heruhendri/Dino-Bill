@@ -19,6 +19,7 @@ class HiosoOLT {
                 'tx': '1.3.6.1.4.1.25355.3.2.6.14.2.1.4',
                 'rx': '1.3.6.1.4.1.25355.3.2.6.14.2.1.8',
                 'mac': '1.3.6.1.4.1.25355.3.2.6.3.2.1.11',
+                'vlan_pvid': '1.3.6.1.4.1.25355.3.2.6.5.1.1.2',
                 'divider': 1
             },
             'HIOSO_B': { 
@@ -35,6 +36,7 @@ class HiosoOLT {
                 'tx': '1.3.6.1.4.1.25355.3.3.1.1.4.1.2',
                 'rx': '1.3.6.1.4.1.25355.3.3.1.1.4.1.1',
                 'mac': '1.3.6.1.4.1.25355.3.3.1.1.1.5',
+                'vlan_pvid': '1.3.6.1.4.1.25355.3.3.1.2.2.1.2',
                 'divider': 100
             },
             'ZTE': { 
@@ -53,6 +55,31 @@ class HiosoOLT {
                 'rx': '1.3.6.1.4.1.34592.1.3.100.12.1.1.14',
                 'mac': '1.3.6.1.4.1.34592.1.3.100.12.1.1.12',
                 'divider': 10
+            },
+            'Huawei': {
+                'name': '1.3.6.1.4.1.2011.6.128.1.1.2.43.1.9',
+                'status': '1.3.6.1.4.1.2011.6.128.1.1.2.43.1.10',
+                'tx': '1.3.6.1.4.1.2011.6.128.1.1.2.51.1.3',
+                'rx': '1.3.6.1.4.1.2011.6.128.1.1.2.51.1.4',
+                'mac': '1.3.6.1.4.1.2011.6.128.1.1.2.43.1.1',
+                'sn': '1.3.6.1.4.1.2011.6.128.1.1.2.43.1.3',
+                'divider': 100
+            },
+            'HSGQ': {
+                'name': '1.3.6.1.4.1.34592.1.3.100.12.1.1.2',
+                'status': '1.3.6.1.4.1.34592.1.3.100.12.1.1.5',
+                'tx': '1.3.6.1.4.1.34592.1.3.100.12.1.1.13',
+                'rx': '1.3.6.1.4.1.34592.1.3.100.12.1.1.14',
+                'mac': '1.3.6.1.4.1.34592.1.3.100.12.1.1.12',
+                'divider': 10
+            },
+            'HSGQ_GPON': {
+                'name': '1.3.6.1.4.1.55047.1.3.2.1.2.1.5',
+                'status': '1.3.6.1.4.1.55047.1.3.2.1.2.1.13',
+                'tx': '1.3.6.1.4.1.55047.1.3.2.1.2.1.19',
+                'rx': '1.3.6.1.4.1.55047.1.3.2.1.2.1.20',
+                'mac': '1.3.6.1.4.1.55047.1.3.2.1.2.1.2',
+                'divider': 100
             }
         };
     }
@@ -69,7 +96,7 @@ class HiosoOLT {
         try {
             let activeProfile = this.oid_profiles[cachedProfileName] || null;
             
-            if (!activeProfile) {
+            if (!activeProfile || cachedProfileName === 'HSGQ') {
                 console.log(`[OLT SYNC] Probing OLT Brand...`);
                 for (const [pName, pMap] of Object.entries(this.oid_profiles)) {
                     try {
@@ -90,6 +117,7 @@ class HiosoOLT {
 
             if (!activeProfile) throw new Error("Gagal mendeteksi profil OLT.");
 
+            console.log(`[OLT SYNC] Detected Profile: ${activeProfile.pName || activeProfile.name}`);
             console.log(`[OLT SYNC] Starting FAST MULTI-WALK for profile: ${activeProfile.pName}`);
             
             const activeOIDs = {};
@@ -168,17 +196,18 @@ class HiosoOLT {
             await runMultiWalk();
 
             const onus = [];
-            const isGPON = activeProfile.pName === 'HIOSO_GPON' || activeProfile.name.includes('.25355.3.3');
 
             for (const [idx, rawName] of Object.entries(dataStore.name)) {
                 const name = rawName.toString().replace(/[^\x20-\x7E]/g, '').trim();
                 if (!name || ['public', 'internal', 'private'].some(s => name.toLowerCase().includes(s))) continue;
 
                 let status = 'Down';
+                const isGPON = activeProfile.pName === 'HIOSO_GPON' || activeProfile.pName === 'HSGQ_GPON' || activeProfile.name.includes('.25355.3.3') || activeProfile.name.includes('.55047.1.3');
                 const sVal = dataStore.status[idx];
                 if (sVal !== undefined) {
                     const v = parseInt(sVal);
                     if (activeProfile.pName === 'ZTE') status = (v === 3) ? 'Up' : 'Down';
+                    else if (activeProfile.pName === 'HSGQ_GPON') status = (v === 1) ? 'Up' : 'Down';
                     else if (isGPON) status = (v >= 2 && v <= 4) ? 'Up' : 'Down';
                     else status = (v === 1 || v === 3 || v === 4) ? 'Up' : 'Down';
                 }
@@ -243,6 +272,27 @@ class HiosoOLT {
             return res.status === 200;
         } catch (e) {
             return false;
+        }
+    }
+
+    async setOnuVlan(index, vlanId, profileName) {
+        this.session = snmp.createSession(this.host, this.community, { port: this.port, version: snmp.Version2c });
+        try {
+            let pMap = this.oid_profiles[profileName];
+            if (!pMap || !pMap.vlan_pvid) throw new Error("Profil OLT ini tidak mendukung setting VLAN via SNMP.");
+
+            // Standard HIOSO Indexing for VLAN is index.1 (for port 1)
+            const oid = pMap.vlan_pvid + '.' + index + '.1';
+            const varbinds = [{ oid: oid, type: snmp.Type.Integer, value: parseInt(vlanId) }];
+
+            return new Promise((resolve, reject) => {
+                this.session.set(varbinds, (error, varbinds) => {
+                    if (error) return reject(error);
+                    resolve(true);
+                });
+            });
+        } finally {
+            if (this.session) this.session.close();
         }
     }
 

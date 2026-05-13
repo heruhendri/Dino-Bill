@@ -19,7 +19,7 @@
         .form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
         .toast{position:fixed;bottom:24px;right:24px;background:var(--toast-bg);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:14px 20px;z-index:9999;display:none;font-size:14px;}.toast.show{display:block;}
         .update-section{background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.2);border-radius:12px;padding:20px;margin-top:8px;}
-        @media(max-width:768px){.sidebar{display:none;}.main{margin-left:0;}.form-row{grid-template-columns:1fr;}}
+        @media(max-width:768px){.main{margin-left:0;}.form-row{grid-template-columns:1fr;}}
     </style>
 </head>
 <body>
@@ -167,6 +167,14 @@
                 </div>
             </div>
             <div class="form-group">
+                <label>Pilih Channel Pembayaran</label>
+                <div id="tripay_channel_list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap:10px; margin-top:10px; padding:15px; background:var(--sub-bg); border:1px solid var(--border); border-radius:12px; max-height:300px; overflow-y:auto;">
+                    <div style="color:var(--muted); font-size:12px; grid-column:1/-1; text-align:center;">Tekan tombol "Test & Muat Channel" di bawah untuk memuat daftar channel.</div>
+                </div>
+                <input type="hidden" id="tripay_channels" value="<%=settings.tripay_channels||''%>">
+                <p class="setting-desc" style="margin-top:8px">Pilih channel mana saja yang ingin Anda tampilkan di portal pelanggan.</p>
+            </div>
+            <div class="form-group">
                 <label><%= t.callback_url %></label>
                 <div style="display:flex;gap:10px">
                     <input type="text" id="tripay_callback_url" class="form-control" readonly style="background:rgba(0,0,0,0.2);cursor:default" value="">
@@ -175,8 +183,8 @@
                 <p class="setting-desc" style="margin-top:8px"><%= t.callback_instruction %></p>
             </div>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
-                <button class="btn btn-primary" onclick="save(['payment_gateway','tripay_api_key','tripay_private_key','tripay_merchant_code','tripay_mode'])">💾 <%= t.save %></button>
-                <button class="btn" style="background:rgba(99,102,241,.15);color:#818CF8;border:1px solid rgba(99,102,241,.3)" onclick="testTripay()">💳 <%= t.test_tripay %></button>
+                <button class="btn btn-primary" onclick="save(['payment_gateway','tripay_api_key','tripay_private_key','tripay_merchant_code','tripay_mode','tripay_channels'])">💾 <%= t.save %></button>
+                <button class="btn" style="background:rgba(99,102,241,.15);color:#818CF8;border:1px solid rgba(99,102,241,.3)" onclick="testTripay()">💳 Test & Muat Channel</button>
             </div>
         </div>
 
@@ -258,6 +266,7 @@
                             <option value="sales"><%= t.sales_access %></option>
                         </select>
                     </div>
+                    <div class="form-group"><label>Telegram ID (Opsional)</label><input type="text" id="u_telegram" class="form-control" placeholder="-100xxxxxxxx atau ID Personal"></div>
                     <button class="btn btn-primary" style="width:100%; justify-content:center" onclick="addUser()">➕ <%= t.add_user_btn %></button>
                 </div>
                 <div>
@@ -265,7 +274,7 @@
                     <div id="userListContainer" style="max-height:400px; overflow-y:auto">
                         <table style="width:100%; border-collapse:collapse; font-size:13px;">
                             <thead><tr style="text-align:left; color:var(--muted); border-bottom:1px solid var(--border)">
-                                <th style="padding:8px"><%= t.user_col %></th><th style="padding:8px"><%= t.role_col %></th><th style="padding:8px"><%= t.action %></th>
+                                <th style="padding:8px"><%= t.user_col %></th><th style="padding:8px"><%= t.role_col %></th><th style="padding:8px">Telegram ID</th><th style="padding:8px"><%= t.action %></th>
                             </tr></thead>
                             <tbody id="userTableBody"></tbody>
                         </table>
@@ -325,6 +334,15 @@
                 <button class="btn" style="background:linear-gradient(135deg,#8B5CF6,#7C3AED);color:white" onclick="runUpdate()">🚀 <%= t.check_update_now %></button>
                 <div id="updateStatus" style="margin-top:14px;font-size:13px;color:var(--muted);display:none"></div>
             </div>
+
+            <h2 class="section-title" style="margin-top:30px">💬 Bantuan & Dukungan</h2>
+            <div class="update-section" style="background:rgba(0,136,204,.08); border-color:rgba(0,136,204,.2)">
+                <p style="color:var(--muted);font-size:14px;margin:0 0 16px">Bergabunglah dengan grup Telegram kami untuk mendapatkan bantuan, info update, dan diskusi seputar Dino-Bill.</p>
+                <a href="https://t.me/dinosupports" target="_blank" class="btn" style="background:#0088cc; color:white; text-decoration:none">
+                    <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="margin-right:8px"><path d="M11.944 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0a12 12 0 00-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.506-1.524 5.845-2.528 7.016-3.013 3.333-1.386 4.025-1.627 4.477-1.635z"/></svg>
+                    Gabung Grup Telegram
+                </a>
+            </div>
         </div>
     </div>
 </main>
@@ -374,10 +392,51 @@ async function testTelegram(){
     const res=await fetch('/settings/api/test-telegram',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:'✅ Test Telegram from Dino-Bill'})});
     const d=await res.json();showToast(d.message,d.success?'success':'error');
 }
-async function testTripay(){
-    showToast('⏳ Testing Tripay connection...','success');
+async function testTripay(silent = false){
+    if(!silent) showToast('⏳ Testing Tripay connection...','success');
     const res=await fetch('/settings/api/test-tripay',{method:'POST',headers:{'Content-Type':'application/json'}});
-    const d=await res.json();showToast(d.message,d.success?'success':'error');
+    const d=await res.json();
+    if(!silent) showToast(d.message,d.success?'success':'error');
+    if (d.success && d.channels) {
+        renderTripayChannels(d.channels);
+    }
+}
+
+function renderTripayChannels(channels) {
+    const container = document.getElementById('tripay_channel_list');
+    const hidden = document.getElementById('tripay_channels');
+    // If hidden is empty, it means "Select All"
+    const selected = hidden.value ? hidden.value.split(',').map(s => s.trim().toUpperCase()) : [];
+    
+    container.innerHTML = '';
+    if (channels.length === 0) {
+        container.innerHTML = '<div style="color:var(--muted); font-size:12px; grid-column:1/-1; text-align:center;">Tidak ada channel aktif di Tripay.</div>';
+        return;
+    }
+
+    channels.forEach(ch => {
+        // If nothing is selected yet (first time), check all. Otherwise check only selected.
+        const isChecked = selected.length === 0 || selected.includes(ch.code.toUpperCase());
+        container.innerHTML += `
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:12px; padding:10px; background:var(--card-bg); border:1px solid var(--border); border-radius:10px; transition: all 0.2s;" class="ch-label">
+                <input type="checkbox" class="tripay-ch-checkbox" value="${ch.code}" ${isChecked ? 'checked' : ''} onchange="updateSelectedChannels()">
+                <div style="display:flex; flex-direction:column; gap:2px">
+                    <span style="font-weight:600">${ch.code}</span>
+                    <span style="font-size:10px; color:var(--muted)">${ch.name}</span>
+                </div>
+            </label>
+        `;
+    });
+    updateSelectedChannels();
+}
+
+function updateSelectedChannels() {
+    const checkboxes = document.querySelectorAll('.tripay-ch-checkbox');
+    const selected = [];
+    checkboxes.forEach(cb => {
+        if (cb.checked) selected.push(cb.value);
+    });
+    document.getElementById('tripay_channels').value = selected.join(',');
 }
 async function runUpdate(){
     const el=document.getElementById('updateStatus');
@@ -397,6 +456,7 @@ async function loadUsers() {
                 <tr style="border-bottom:1px solid var(--border)">
                     <td style="padding:10px">${u.username}</td>
                     <td style="padding:10px"><span class="badge" style="background:var(--sub-bg); color:var(--text); border:1px solid var(--border); font-size:10px">${u.role.toUpperCase()}</span></td>
+                    <td style="padding:10px; color:var(--muted); font-size:11px">${u.telegram_id || '-'}</td>
                     <td style="padding:10px"><button class="btn btn-sm btn-danger" onclick="deleteUser(${u.id})">🗑</button></td>
                 </tr>`;
         });
@@ -407,17 +467,19 @@ async function addUser() {
     const username = document.getElementById('u_user').value;
     const password = document.getElementById('u_pass').value;
     const role = document.getElementById('u_role').value;
+    const telegram_id = document.getElementById('u_telegram').value;
     if (!username || !password) return alert('Lengkapi data!');
     const res = await fetch('/settings/api/users', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ username, password, role })
+        body: JSON.stringify({ username, password, role, telegram_id })
     });
     const d = await res.json();
     showToast(d.message, d.success ? 'success' : 'error');
     if (d.success) {
         document.getElementById('u_user').value = '';
         document.getElementById('u_pass').value = '';
+        document.getElementById('u_telegram').value = '';
         loadUsers();
     }
 }
@@ -438,6 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleWAFields();
     setInterval(checkWAStatus, 5000);
     checkWAStatus();
+    if(document.getElementById('tripay_api_key').value) testTripay(true);
 });
 
 function toggleWAFields() {

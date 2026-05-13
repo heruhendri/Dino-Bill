@@ -96,6 +96,7 @@ if (!isInstalled) {
           username VARCHAR(50) NOT NULL UNIQUE,
           password VARCHAR(255) NOT NULL,
           role VARCHAR(20) DEFAULT 'admin',
+          telegram_id VARCHAR(50),
           created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
       `);
@@ -181,6 +182,8 @@ SESSION_SECRET=${Math.random().toString(36).substring(2, 15)}
       portal_password VARCHAR(255),
       email VARCHAR(100),
       status VARCHAR(20) DEFAULT 'active',
+      technician_id INT,
+      installation_status VARCHAR(20) DEFAULT 'pending',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
@@ -220,13 +223,22 @@ SESSION_SECRET=${Math.random().toString(36).substring(2, 15)}
   checkAndAddColumn('trouble_tickets', 'description', 'TEXT');
   checkAndAddColumn('hioso_olts', 'last_profile', 'VARCHAR(100)');
   // Safer migration for 'brand' column
-  pool.query("SHOW COLUMNS FROM hioso_olts LIKE 'brand'").then(([rows]) => {
+  // Safer migration for OLT columns
+  const checkAndAddOltColumn = async (col, def) => {
+    const [rows] = await pool.query(`SHOW COLUMNS FROM hioso_olts LIKE ?`, [col]);
     if (rows.length === 0) {
-        return pool.query("ALTER TABLE hioso_olts ADD COLUMN brand VARCHAR(50) DEFAULT 'HIOSO'");
+      await pool.query(`ALTER TABLE hioso_olts ADD COLUMN ${col} ${def}`).catch(() => {});
     }
-  }).catch(() => {});
+  };
+  checkAndAddOltColumn('brand', "VARCHAR(50) DEFAULT 'HIOSO'");
+  checkAndAddOltColumn('model', "VARCHAR(50) DEFAULT NULL");
+  checkAndAddOltColumn('last_profile', "VARCHAR(100) DEFAULT NULL");
   checkAndAddColumn('hioso_onus', 'mac', 'VARCHAR(100)');
   checkAndAddColumn('customers', 'odp_id', 'INT');
+  checkAndAddColumn('customers', 'technician_id', 'INT');
+  checkAndAddColumn('customers', 'installation_status', "VARCHAR(20) DEFAULT 'pending'");
+  checkAndAddColumn('trouble_tickets', 'technician_id', 'INT');
+  checkAndAddColumn('users', 'telegram_id', 'VARCHAR(50)');
 
   pool.query(`
     CREATE TABLE IF NOT EXISTS invoices (
@@ -316,6 +328,7 @@ SESSION_SECRET=${Math.random().toString(36).substring(2, 15)}
       description TEXT,
       status VARCHAR(20) DEFAULT 'open',
       priority VARCHAR(20) DEFAULT 'normal',
+      technician_id INT,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
     )
@@ -486,6 +499,13 @@ SESSION_SECRET=${Math.random().toString(36).substring(2, 15)}
             WHERE t.status = "open" 
             ORDER BY t.priority DESC, t.created_at ASC`);
 
+        // 1.5 Get Pending Installations for this technician
+        const [installations] = await pool.query(`
+            SELECT * FROM customers 
+            WHERE technician_id = ? AND installation_status = 'pending'
+            ORDER BY created_at DESC
+        `, [req.session.userId]);
+
         // 2. Handle Search if provided
         if (search) {
             [searchResults] = await pool.query(`
@@ -519,6 +539,7 @@ SESSION_SECRET=${Math.random().toString(36).substring(2, 15)}
         res.render('technician_portal', { 
             user: req.session, 
             tickets, 
+            installations,
             searchResults,
             customerMarkers,
             mapObjects,
@@ -555,7 +576,7 @@ SESSION_SECRET=${Math.random().toString(36).substring(2, 15)}
         const response = await axios.get(`${s.acs_url}/devices`, {
             params: { query: JSON.stringify(query), projection },
             auth,
-            timeout: 5000
+            timeout: 15000
         });
 
         if (response.data && response.data.length > 0) {
@@ -603,6 +624,15 @@ SESSION_SECRET=${Math.random().toString(36).substring(2, 15)}
         res.json({ success: true, rx_power: data.rx_power, status: data.status });
     } catch (e) {
         res.json({ success: false, message: e.message });
+    }
+  });
+
+  app.post('/technician/api/installation-done/:id', requireRole('technician'), async (req, res) => {
+    try {
+        await pool.query("UPDATE customers SET installation_status = 'completed' WHERE id = ? AND technician_id = ?", [req.params.id, req.session.userId]);
+        res.json({ success: true, message: 'Instalasi ditandai sebagai selesai' });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
     }
   });
 
