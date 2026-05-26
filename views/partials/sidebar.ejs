@@ -61,6 +61,18 @@
                     <i class="fa-solid fa-chart-line"></i> Network Monitor
                 </a>
             <% } %>
+
+            <% if (plugins.radius_manager && plugins.radius_manager.is_active) { %>
+                <a href="/radius-manager" class="nav-item <%= currentPage === 'radius-manager' ? 'active' : '' %>">
+                    <i class="fa-solid fa-circle-nodes"></i> RADIUS Manager
+                </a>
+            <% } %>
+
+            <% if (plugins.technician_attendance && plugins.technician_attendance.is_active) { %>
+                <a href="/admin/attendance" class="nav-item <%= currentPage === 'attendance' ? 'active' : '' %>">
+                    <i class="fa-solid fa-clock-rotate-left"></i> Absensi Teknisi
+                </a>
+            <% } %>
         <% } %>
 
         <div class="nav-section"><%= t.system %></div>

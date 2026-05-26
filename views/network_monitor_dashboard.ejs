@@ -1,0 +1,244 @@
+
+<%- include('partials/head') %>
+<%- include('partials/sidebar') %>
+
+<style>
+    .monitor-container { padding: 25px; max-width: 1600px; margin: 0 auto; }
+    .glass-card {
+        background: #111827;
+        border: 1px solid #1f2937;
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .control-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 15px;
+        align-items: flex-end;
+    }
+    .input-box { flex: 1; min-width: 180px; }
+    .label-premium {
+        font-size: 11px;
+        font-weight: 700;
+        color: #6b7280;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        display: block;
+    }
+    .select-premium, .search-premium {
+        background: #1f2937 !important;
+        border: 1px solid #374151 !important;
+        color: #f3f4f6 !important;
+        border-radius: 8px !important;
+        padding: 10px 12px !important;
+        width: 100%;
+        font-size: 14px;
+        outline: none;
+    }
+    .search-premium:focus { border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1); }
+    
+    .stats-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    .mini-card {
+        padding: 20px;
+        border-radius: 16px;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .bg-download { background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%); }
+    .bg-upload { background: linear-gradient(135deg, #059669 0%, #047857 100%); }
+    .mini-card .val { font-size: 32px; font-weight: 800; }
+    
+    .chart-box { height: 450px; background: #030712; border-radius: 16px; padding: 20px; border: 1px solid #1f2937; }
+</style>
+
+<main class="main">
+    <%- include('partials/topbar', { title: 'Network Intelligence' }) %>
+    
+    <div class="monitor-container">
+        <!-- CONTROLS -->
+        <div class="glass-card">
+            <div class="control-bar">
+                <div class="input-box">
+                    <label class="label-premium">Router</label>
+                    <select id="routerSelect" class="select-premium">
+                        <% routers.forEach(r => { %>
+                            <option value="<%= r.id %>"><%= r.name %></option>
+                        <% }) %>
+                    </select>
+                </div>
+                <div class="input-box" style="flex: 0.5;">
+                    <label class="label-premium">Mode</label>
+                    <select id="monitorType" class="select-premium">
+                        <option value="interface">Interface</option>
+                        <option value="pppoe">User PPPoE</option>
+                    </select>
+                </div>
+                <!-- Interface Selection -->
+                <div class="input-box" id="interfaceGroup">
+                    <label class="label-premium">Pilih Interface</label>
+                    <select id="interfaceSelect" class="select-premium"><option value="">Memuat...</option></select>
+                </div>
+                <!-- Search & Select PPPoE -->
+                <div class="input-box" id="pppoeSearchGroup" style="display: none;">
+                    <label class="label-premium">Cari Pelanggan</label>
+                    <input type="text" id="pppoeSearch" class="search-premium" placeholder="Ketik nama user...">
+                </div>
+                <div class="input-box" id="pppoeSelectGroup" style="display: none;">
+                    <label class="label-premium">Daftar Pelanggan Online</label>
+                    <select id="pppoeSelect" class="select-premium"><option value="">Memuat...</option></select>
+                </div>
+            </div>
+        </div>
+
+        <!-- STATS -->
+        <div class="stats-row">
+            <div class="mini-card bg-download">
+                <div>
+                    <div class="small fw-bold opacity-75">DOWNLOAD</div>
+                    <div class="val" id="currentRx">0.00</div>
+                    <div class="small fw-bold opacity-50">MBPS</div>
+                </div>
+                <i class="fas fa-arrow-down fa-2x opacity-25"></i>
+            </div>
+            <div class="mini-card bg-upload">
+                <div>
+                    <div class="small fw-bold opacity-75">UPLOAD</div>
+                    <div class="val" id="currentTx">0.00</div>
+                    <div class="small fw-bold opacity-50">MBPS</div>
+                </div>
+                <i class="fas fa-arrow-up fa-2x opacity-25"></i>
+            </div>
+            <div class="glass-card mb-0 d-flex align-items-center">
+                <div class="w-100">
+                    <label class="label-premium">Target Monitoring</label>
+                    <div id="targetLabel" class="fw-bold text-white">-</div>
+                    <div id="metaInfo" class="small text-secondary mt-1">Sesi Aktif: Monitoring Siap</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-box">
+            <div style="height: 410px;"><canvas id="trafficChart"></canvas></div>
+        </div>
+    </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('trafficChart').getContext('2d');
+    const MAX_DATA_POINTS = 60;
+    const labels = Array(MAX_DATA_POINTS).fill('');
+    const rxData = Array(MAX_DATA_POINTS).fill(0);
+    const txData = Array(MAX_DATA_POINTS).fill(0);
+
+    const trafficChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'Down', data: rxData, borderColor: '#3b82f6', fill: false, tension: 0.4, borderWidth: 2.5, pointRadius: 0 },
+                { label: 'Up', data: txData, borderColor: '#10b981', fill: false, tension: 0.4, borderWidth: 2.5, pointRadius: 0 }
+            ]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                y: { grid: { color: 'rgba(255,255,255,0.02)' }, ticks: { color: '#6b7280' } },
+                x: { display: false }
+            },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    let allActiveUsers = [];
+
+    async function loadResources() {
+        const routerId = document.getElementById('routerSelect').value;
+        const type = document.getElementById('monitorType').value;
+        
+        if (type === 'interface') {
+            document.getElementById('interfaceGroup').style.display = 'block';
+            document.getElementById('pppoeSearchGroup').style.display = 'none';
+            document.getElementById('pppoeSelectGroup').style.display = 'none';
+            
+            const select = document.getElementById('interfaceSelect');
+            select.innerHTML = '<option value="">Memuat...</option>';
+            const res = await fetch(`/api/plugins/network-monitor/interfaces?router_id=${routerId}`);
+            const json = await res.json();
+            if (json.success) select.innerHTML = json.data.map(i => `<option value="${i.name}">${i.name} (${i.type})</option>`).join('');
+        } else {
+            document.getElementById('interfaceGroup').style.display = 'none';
+            document.getElementById('pppoeSearchGroup').style.display = 'block';
+            document.getElementById('pppoeSelectGroup').style.display = 'block';
+            
+            const select = document.getElementById('pppoeSelect');
+            select.innerHTML = '<option value="">Memuat...</option>';
+            const res = await fetch(`/api/plugins/network-monitor/active-users?router_id=${routerId}`);
+            const json = await res.json();
+            if (json.success) {
+                allActiveUsers = json.data;
+                renderUserList(allActiveUsers);
+            }
+        }
+    }
+
+    function renderUserList(users) {
+        const select = document.getElementById('pppoeSelect');
+        if (users.length === 0) {
+            select.innerHTML = '<option value="">Tidak ada hasil</option>';
+            return;
+        }
+        select.innerHTML = '<option value="">-- Pilih User (${users.length}) --</option>' + 
+            users.map(u => `<option value="${u.name}">${u.name}</option>`).join('');
+    }
+
+    document.getElementById('pppoeSearch').addEventListener('input', function() {
+        const q = this.value.toLowerCase();
+        const filtered = allActiveUsers.filter(u => u.name.toLowerCase().includes(q));
+        renderUserList(filtered);
+    });
+
+    document.getElementById('monitorType').addEventListener('change', loadResources);
+    document.getElementById('routerSelect').addEventListener('change', loadResources);
+    
+    document.getElementById('pppoeSelect').addEventListener('change', function() {
+        const user = allActiveUsers.find(u => u.name === this.value);
+        if (user) document.getElementById('metaInfo').innerHTML = `IP: ${user.address} | Uptime: ${user.uptime}`;
+    });
+
+    async function updateTraffic() {
+        const routerId = document.getElementById('routerSelect').value;
+        const type = document.getElementById('monitorType').value;
+        const iface = type === 'interface' ? document.getElementById('interfaceSelect').value : document.getElementById('pppoeSelect').value;
+        if (!iface) return;
+        try {
+            const res = await fetch(`/api/mikrotik/traffic?interface=${encodeURIComponent(iface)}`);
+            const json = await res.json();
+            if (json.success && json.data.length > 0) {
+                const data = json.data.find(d => d.router_id == routerId) || json.data[0];
+                const rxMbps = (data.rx / 1000000).toFixed(2);
+                const txMbps = (data.tx / 1000000).toFixed(2);
+                document.getElementById('currentRx').innerText = rxMbps;
+                document.getElementById('currentTx').innerText = txMbps;
+                document.getElementById('targetLabel').innerText = iface;
+                rxData.push(rxMbps); txData.push(txMbps);
+                if (rxData.length > MAX_DATA_POINTS) { rxData.shift(); txData.shift(); }
+                trafficChart.update('none');
+            }
+        } catch (e) {}
+    }
+
+    loadResources();
+    setInterval(updateTraffic, 2000);
+</script>
+</body>
+</html>
+    
