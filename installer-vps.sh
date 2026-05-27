@@ -94,12 +94,13 @@ mysql -u root -p"$DB_PASS" -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;"
 mysql -u root -p"$DB_PASS" -e "CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS';"
 mysql -u root -p"$DB_PASS" -e "GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost';"
 
-# Pastikan tabel plugins menggunakan kolom license_key (kompatibilitas backend)
-mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "CREATE TABLE IF NOT EXISTS plugins (id INT AUTO_INCREMENT PRIMARY KEY, plugin_key VARCHAR(255), license_key VARCHAR(255), status VARCHAR(50));"
+# Pastikan tabel plugins memiliki kolom lengkap untuk tampilan dashboard
+mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "CREATE TABLE IF NOT EXISTS plugins (id INT AUTO_INCREMENT PRIMARY KEY, plugin_key VARCHAR(255) UNIQUE, name VARCHAR(255), description TEXT, is_active TINYINT(1) DEFAULT 0, license_key VARCHAR(255), status VARCHAR(50));"
 mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "IF EXISTS (SELECT * FROM information_schema.COLUMNS WHERE TABLE_NAME='plugins' AND COLUMN_NAME='license_password') THEN ALTER TABLE plugins CHANGE license_password license_key VARCHAR(255); END IF;" 2>/dev/null
 
-# Set password lisensi plugin menjadi 'hendri' secara default
-mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "UPDATE plugins SET license_key = 'hendri' WHERE license_key IS NULL OR license_key = '';" 2>/dev/null
+# Tambahkan data plugin default (termasuk Absensi Teknisi) agar muncul di Dashboard
+mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "INSERT IGNORE INTO plugins (plugin_key, name, description, is_active, license_key) VALUES ('attendance', 'Absensi Teknisi', 'Fitur absensi harian untuk teknisi dengan lokasi GPS dan riwayat absensi.', 0, 'hendri');" 2>/dev/null
+mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "INSERT IGNORE INTO plugins (plugin_key, name, description, is_active, license_key) VALUES ('wa_bulk', 'WhatsApp Bulk', 'Kirim pesan massal ke pelanggan dengan satu klik.', 0, 'hendri');" 2>/dev/null
 
 mysql -u root -p"$DB_PASS" -e "FLUSH PRIVILEGES;"
 echo -e "${YELLOW}Database $DB_NAME berhasil disiapkan.${NC}"
