@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <%- include('partials/head') %>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root { 
+            --primary: #8B5CF6; 
+            --primary-soft: rgba(139, 92, 246, 0.1); 
+        }
+        body { 
+            background: var(--bg-color); 
+            color: var(--text); 
+            margin: 0; 
+            padding-bottom: 90px; 
+            transition: background 0.3s, color 0.3s; 
+            display: flex; 
+            flex-direction: column; 
+            min-height: 100vh; 
+        }
+        .portal-header { 
+            background: var(--sidebar-bg); 
+            padding: 15px 20px; 
+            border-bottom: 1px solid var(--border); 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            position: sticky; 
+            top: 0; 
+            z-index: 1000; 
+            backdrop-filter: blur(10px); 
+            width: 100%; 
+        }
+        .portal-title { font-size: 18px; font-weight: 700; margin: 0; }
+        .portal-subtitle { font-size: 12px; color: var(--muted); margin-top: 2px; }
+        .content { padding: 20px; width: 100%; flex: 1; }
+        
+        .clock-widget {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(99, 102, 241, 0.15));
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+            margin-bottom: 24px;
+            backdrop-filter: blur(8px);
+        }
+        .clock-time {
+            font-size: 38px;
+            font-weight: 800;
+            color: #FAF5FF;
+            text-shadow: 0 0 15px rgba(139, 92, 246, 0.4);
+            font-family: monospace;
+            margin: 8px 0;
+        }
+        .clock-date {
+            font-size: 13px;
+            color: var(--muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .map-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .map-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .map-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #map {
+            height: 200px;
+            width: 100%;
+        }
+
+        .btn-attendance {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 16px;
+            border-radius: 14px;
+            font-size: 15px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            margin-bottom: 14px;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+        }
+        .btn-in {
+            background: linear-gradient(135deg, #8B5CF6, #6366F1);
+            color: white;
+        }
+        .btn-out {
+            background: linear-gradient(135deg, #EF4444, #F59E0B);
+            color: white;
+            box-shadow: 0 4px 15px rgba(239, 68, 68, 0.3);
+        }
+        .btn-attendance:disabled {
+            background: var(--border);
+            color: var(--muted);
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .history-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 18px;
+        }
+        .history-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin: 0 0 16px;
+        }
+        .history-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .history-item:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .history-date {
+            font-weight: 600;
+            font-size: 13px;
+        }
+        .history-time {
+            font-size: 12px;
+            color: var(--muted);
+            margin-top: 4px;
+        }
+
+        .bottom-nav { 
+            position: fixed; 
+            bottom: 0; 
+            left: 0; 
+            right: 0; 
+            background: var(--topbar-bg); 
+            backdrop-filter: blur(10px); 
+            border-top: 1px solid var(--border); 
+            display: flex; 
+            justify-content: space-around; 
+            padding: 12px 10px; 
+            z-index: 1001; 
+        }
+        .nav-item { 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            gap: 4px; 
+            color: var(--muted); 
+            text-decoration: none; 
+            font-size: 11px; 
+            font-weight: 500; 
+            cursor: pointer; 
+        }
+        .nav-item.active { color: #8B5CF6; }
+    </style>
+</head>
+<body>
+    <div class="portal-header">
+        <div>
+            <h1 class="portal-title">Presensi Kehadiran</h1>
+            <p class="portal-subtitle">Menu Absensi Harian Teknisi</p>
+        </div>
+        <a href="/technician" style="background:var(--card-bg); border:1px solid var(--border); color:var(--text); width:38px; height:38px; border-radius:10px; text-decoration:none; display:flex; align-items:center; justify-content:center;">
+            <i class="fas fa-arrow-left"></i>
+        </a>
+    </div>
+
+    <div class="content">
+        <!-- Live Clock Widget -->
+        <div class="clock-widget">
+            <div class="clock-date" id="liveDate">Selasa, 26 Mei 2026</div>
+            <div class="clock-time" id="liveTime">00:00:00</div>
+            <span class="badge" style="background:rgba(139,92,246,0.1); color:#A78BFA; border:1px solid rgba(139,92,246,0.2);">WIB (Lokal)</span>
+        </div>
+
+        <!-- GPS Verification Map -->
+        <div class="map-card">
+            <div class="map-header">
+                <h3 class="map-title"><i class="fa-solid fa-location-crosshairs text-primary"></i> Lokasi GPS Anda</h3>
+                <span id="gpsStatus" class="badge" style="background:rgba(245,158,11,0.1); color:#F59E0B;">Mencari Sinyal GPS...</span>
+            </div>
+            <div id="map"></div>
+            <div style="padding: 10px 18px; font-size:11px; color:var(--muted); background:var(--sub-bg); border-top:1px solid var(--border);">
+                📍 Lat: <span id="latVal">--</span>, Lng: <span id="lngVal">--</span>
+            </div>
+        </div>
+
+        <!-- Attendance Actions -->
+        <div style="margin-bottom: 24px;">
+            <textarea id="notes" class="form-control" placeholder="Catatan opsional (misal: Sakit, Izin, Kegiatan lapangan)..." style="height: 70px; border-radius: 12px; margin-bottom: 14px; font-size: 13px;"></textarea>
+
+            <% if (!attendance) { %>
+                <!-- Belum Absen sama sekali hari ini -->
+                <button class="btn-attendance btn-in" id="btnClockIn" onclick="submitAttendance('in')" disabled>
+                    <i class="fa-solid fa-right-to-bracket"></i> Absen Masuk Sekarang
+                </button>
+            <% } else if (attendance && !attendance.clock_out) { %>
+                <!-- Sudah Absen Masuk, Belum Absen Pulang -->
+                <div style="background:var(--primary-soft); border:1px solid rgba(139, 92, 246, 0.2); border-radius:14px; padding:15px; text-align:center; margin-bottom:14px;">
+                    <div style="font-size:13px; font-weight:600; color:#A78BFA;">Anda sudah absen masuk pada:</div>
+                    <div style="font-size:20px; font-weight:700; margin-top:4px;"><%= attendance.clock_in %></div>
+                </div>
+                <button class="btn-attendance btn-out" id="btnClockOut" onclick="submitAttendance('out')" disabled>
+                    <i class="fa-solid fa-right-from-bracket"></i> Absen Pulang Sekarang
+                </button>
+            <% } else { %>
+                <!-- Sudah Absen Masuk dan Pulang -->
+                <div style="background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.2); border-radius:14px; padding:20px; text-align:center;">
+                    <i class="fa-solid fa-circle-check" style="font-size:32px; color:#10B981; margin-bottom:8px;"></i>
+                    <h4 style="margin:0; font-size:16px;">Absensi Hari Ini Lengkap!</h4>
+                    <p style="margin:5px 0 0; font-size:12px; color:var(--muted);">Terima kasih atas kerja keras Anda hari ini.</p>
+                </div>
+            <% } %>
+        </div>
+
+        <!-- History last 7 days -->
+        <div class="history-card">
+            <h3 class="history-title"><i class="fa-solid fa-clock-rotate-left"></i> Riwayat 7 Hari Terakhir</h3>
+            <% if (history && history.length > 0) { %>
+                <% history.forEach(h => { %>
+                    <div class="history-item">
+                        <div>
+                            <div class="history-date"><%= new Date(h.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'short' }) %></div>
+                            <div class="history-time">
+                                <span style="color:var(--success)"><i class="fa-solid fa-right-to-bracket"></i> <%= h.clock_in %></span> 
+                                <% if (h.clock_out) { %>
+                                    | <span style="color:var(--danger)"><i class="fa-solid fa-right-from-bracket"></i> <%= h.clock_out %></span>
+                                <% } %>
+                            </div>
+                        </div>
+                        <span class="badge" style="background:<%= h.status==='present'?'rgba(16,185,129,.15)':h.status==='late'?'rgba(245,158,11,.15)':'rgba(239,68,68,.15)' %>; color:<%= h.status==='present'?'#10B981':h.status==='late'?'#F59E0B':'#EF4444' %>">
+                            <%= h.status === 'present' ? 'Hadir' : h.status === 'late' ? 'Terlambat' : h.status %>
+                        </span>
+                    </div>
+                <% }) %>
+            <% } else { %>
+                <div style="text-align:center; padding:15px; color:var(--muted); font-size:12px;">Belum ada riwayat absensi.</div>
+            <% } %>
+        </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <div class="bottom-nav">
+        <a href="/technician" class="nav-item">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+            <span>Tugas</span>
+        </a>
+        <a href="/technician/attendance" class="nav-item active">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span>Absen</span>
+        </a>
+        <a href="/logout" class="nav-item">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+            <span>Keluar</span>
+        </a>
+    </div>
+
+    <div id="toast" style="position:fixed;bottom:90px;left:20px;right:20px;background:var(--toast-bg);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:14px 20px;z-index:9999;display:none;font-size:14px;box-shadow:0 10px 25px rgba(0,0,0,0.2); text-align:center;"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let lat = null;
+        let lng = null;
+        let map = null;
+        let marker = null;
+
+        // Inisialisasi Peta Leaflet
+        function initMap(latitude, longitude) {
+            lat = latitude;
+            lng = longitude;
+            
+            document.getElementById('latVal').textContent = latitude.toFixed(6);
+            document.getElementById('lngVal').textContent = longitude.toFixed(6);
+
+            const gpsStatus = document.getElementById('gpsStatus');
+            gpsStatus.textContent = 'GPS Terkunci ✔️';
+            gpsStatus.style.background = 'rgba(16, 185, 129, 0.15)';
+            gpsStatus.style.color = '#10B981';
+
+            // Aktifkan Tombol Absen
+            const btnIn = document.getElementById('btnClockIn');
+            const btnOut = document.getElementById('btnClockOut');
+            if (btnIn) btnIn.removeAttribute('disabled');
+            if (btnOut) btnOut.removeAttribute('disabled');
+
+            if (!map) {
+                map = L.map('map').setView([latitude, longitude], 16);
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; OpenStreetMap'
+                }).addTo(map);
+
+                marker = L.marker([latitude, longitude]).addTo(map)
+                    .bindPopup('<b>Lokasi Anda Saat Ini</b>').openPopup();
+            } else {
+                map.setView([latitude, longitude], 16);
+                marker.setLatLng([latitude, longitude]);
+            }
+        }
+
+        // Dapatkan Lokasi GPS dengan Akurasi Tinggi
+        function getGPSLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        initMap(position.coords.latitude, position.coords.longitude);
+                    },
+                    (error) => {
+                        console.error(error);
+                        const gpsStatus = document.getElementById('gpsStatus');
+                        gpsStatus.textContent = 'GPS Error: Izinkan Lokasi!';
+                        gpsStatus.style.background = 'rgba(239, 68, 68, 0.15)';
+                        gpsStatus.style.color = '#EF4444';
+                        showToast('Gagal memuat GPS. Silakan aktifkan GPS dan izinkan browser mengakses lokasi.', 'error');
+                    },
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+                );
+            } else {
+                showToast('Browser Anda tidak mendukung GPS Geolocation.', 'error');
+            }
+        }
+
+        // Live Clock & Date Widget
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toTimeString().split(' ')[0];
+            document.getElementById('liveTime').textContent = timeStr;
+
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            
+            const dateStr = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+            document.getElementById('liveDate').textContent = dateStr;
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Jalankan GPS saat halaman terbuka
+        window.addEventListener('load', getGPSLocation);
+
+        // Kirim data absensi
+        async function submitAttendance(type) {
+            if (lat === null || lng === null) {
+                showToast('Koordinat GPS belum ditemukan. Harap tunggu.', 'error');
+                return;
+            }
+
+            const notes = document.getElementById('notes').value;
+            const endpoint = `/technician/attendance/clock-${type}`;
+            
+            try {
+                const btn = type === 'in' ? document.getElementById('btnClockIn') : document.getElementById('btnClockOut');
+                btn.setAttribute('disabled', 'true');
+                btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memproses...';
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lat: lat.toString(), lng: lng.toString(), notes })
+                });
+
+                const res = await response.json();
+                
+                if (res.success) {
+                    showToast(res.message, 'success');
+                    setTimeout(() => location.reload(), 2000);
+                } else {
+                    showToast(res.message, 'error');
+                    btn.removeAttribute('disabled');
+                    btn.innerHTML = type === 'in' ? '<i class="fa-solid fa-right-to-bracket"></i> Absen Masuk Sekarang' : '<i class="fa-solid fa-right-from-bracket"></i> Absen Pulang Sekarang';
+                }
+            } catch (err) {
+                showToast('Gagal memproses absensi: ' + err.message, 'error');
+            }
+        }
+
+        function showToast(msg, type) {
+            const t = document.getElementById('toast');
+            t.textContent = msg;
+            t.style.color = type === 'success' ? '#10B981' : '#EF4444';
+            t.style.display = 'block';
+            setTimeout(() => t.style.display = 'none', 4000);
+        }
+    </script>
+</body>
+</html>
