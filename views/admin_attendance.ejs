@@ -1,0 +1,285 @@
+<head>
+    <%- include('partials/head') %>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+            margin-top: 24px;
+        }
+
+        .filter-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        .attendance-table-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 24px;
+            overflow: hidden;
+        }
+
+        .map-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            height: fit-content;
+            position: sticky;
+            top: 85px;
+        }
+
+        #map {
+            height: 300px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+
+        .log-row {
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .log-row:hover {
+            background: var(--hover-bg);
+        }
+
+        .log-row.selected {
+            background: var(--primary-soft);
+            border-left: 3px solid var(--primary);
+        }
+
+        .detail-pane {
+            background: var(--input-bg);
+            border-radius: 12px;
+            padding: 16px;
+            border: 1px solid var(--border);
+            display: none;
+        }
+
+        .detail-pane.active {
+            display: block;
+        }
+
+        .text-time-in { color: var(--success); font-weight: 600; }
+        .text-time-out { color: var(--danger); font-weight: 600; }
+    </style>
+</head>
+
+<body>
+    <%- include('partials/sidebar') %>
+    <main class="main">
+        <%- include('partials/topbar', { title: 'Laporan Absensi Teknisi' }) %>
+        <div class="content">
+            
+            <!-- Header -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+                <div>
+                    <h1 class="page-title" style="margin:0 0 4px 0;">Absensi Teknisi</h1>
+                    <p style="color:var(--muted); font-size:14px; margin:0;">Pantau kehadiran harian, waktu check-in/out, dan lokasi GPS real-time teknisi.</p>
+                </div>
+            </div>
+
+            <!-- Filter Section -->
+            <div class="filter-card">
+                <form action="/admin/attendance" method="GET" style="display:flex; align-items:center; gap:16px; flex-wrap:wrap; width:100%;">
+                    <div style="display:flex; flex-direction:column; gap:6px; min-width: 200px;">
+                        <label style="font-size:12px; color:var(--muted); font-weight:600;">PILIH TANGGAL</label>
+                        <input type="date" name="date" class="form-control" value="<%= dateFilter %>" onchange="this.form.submit()">
+                    </div>
+                    <div style="margin-left:auto; display:flex; align-items:center; gap:8px;">
+                        <span class="badge" style="background:rgba(16,185,129,0.1); color:#10B981; border:1px solid rgba(16,185,129,0.2);">
+                            Tanggal: <%= new Date(dateFilter).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) %>
+                        </span>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Main Dashboard Grid -->
+            <div class="dashboard-grid">
+                
+                <!-- Table Logs -->
+                <div class="attendance-table-card">
+                    <h3 style="font-size:16px; font-weight:700; margin:0 0 20px 0;"><i class="fa-solid fa-list-check" style="color:var(--primary); margin-right:8px;"></i> Log Kehadiran Hari Ini</h3>
+                    <div style="overflow-x:auto;">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Nama Teknisi</th>
+                                    <th>Jam Masuk</th>
+                                    <th>Jam Pulang</th>
+                                    <th>Status</th>
+                                    <th>Catatan</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% if (logs && logs.length > 0) { %>
+                                    <% logs.forEach(log => { %>
+                                        <tr class="log-row" id="row-<%= log.id %>" onclick="selectLog(<%= JSON.stringify(log) %>)">
+                                            <td style="font-weight:600;"><%= log.technician_name %></td>
+                                            <td class="text-time-in"><i class="fa-solid fa-right-to-bracket"></i> <%= log.clock_in %></td>
+                                            <td class="text-time-out"><i class="fa-solid fa-right-from-bracket"></i> <%= log.clock_out || '--:--:--' %></td>
+                                            <td>
+                                                <span class="badge badge-<%= log.status === 'present' ? 'active' : log.status === 'late' ? 'warning' : 'danger' %>">
+                                                    <%= log.status === 'present' ? 'Tepat Waktu' : log.status === 'late' ? 'Terlambat' : log.status %>
+                                                </span>
+                                            </td>
+                                            <td style="color:var(--muted); font-size:12px; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                                                <%= log.notes || '-' %>
+                                            </td>
+                                        </tr>
+                                    <% }) %>
+                                <% } else { %>
+                                    <tr>
+                                        <td colspan="5" style="text-align:center; padding:40px; color:var(--muted);">
+                                            <i class="fa-solid fa-calendar-minus" style="font-size:32px; display:block; margin-bottom:12px; color:var(--border);"></i>
+                                            Tidak ada data absensi untuk tanggal ini.
+                                        </td>
+                                    </tr>
+                                <% } %>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Map & Location Details -->
+                <div class="map-card">
+                    <h3 style="font-size:15px; font-weight:700; margin:0;"><i class="fa-solid fa-map-pin" style="color:var(--primary); margin-right:8px;"></i> Lokasi Absensi</h3>
+                    <div id="map"></div>
+                    
+                    <!-- Details Pane -->
+                    <div class="detail-pane" id="detailPane">
+                        <h4 style="margin:0 0 12px 0; font-size:14px; font-weight:700; border-bottom:1px solid var(--border); padding-bottom:8px;" id="detailName">Nama Teknisi</h4>
+                        
+                        <div style="display:grid; grid-template-columns:1fr; gap:12px; font-size:12px;">
+                            <div>
+                                <span style="color:var(--muted); display:block; margin-bottom:2px;">Waktu Masuk (Clock In)</span>
+                                <strong id="detailClockIn" class="text-time-in">-</strong>
+                                <span id="detailLocIn" style="display:block; font-size:10px; color:var(--muted); margin-top:2px;">Lat: -, Lng: -</span>
+                            </div>
+                            
+                            <div>
+                                <span style="color:var(--muted); display:block; margin-bottom:2px;">Waktu Pulang (Clock Out)</span>
+                                <strong id="detailClockOut" class="text-time-out">-</strong>
+                                <span id="detailLocOut" style="display:block; font-size:10px; color:var(--muted); margin-top:2px;">Lat: -, Lng: -</span>
+                            </div>
+
+                            <div style="border-top:1px solid var(--border); padding-top:8px;">
+                                <span style="color:var(--muted); display:block; margin-bottom:2px;">Catatan Tambahan</span>
+                                <p id="detailNotes" style="margin:0; font-style:italic; color:var(--text); font-size:12px;">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="mapPlaceholder" style="text-align:center; padding:20px; color:var(--muted); font-size:12px;">
+                        💡 Klik salah satu baris absensi untuk menampilkan koordinat GPS dan lokasi di peta.
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let map = null;
+        let markersGroup = null;
+
+        // Inisialisasi Peta
+        function initMap() {
+            map = L.map('map').setView([-6.200000, 106.816666], 13);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+            
+            markersGroup = L.featureGroup().addTo(map);
+        }
+
+        // Tampilkan Detail Absensi & Lokasi di Peta
+        function selectLog(log) {
+            // Hapus kelas terpilih dari baris lainnya
+            document.querySelectorAll('.log-row').forEach(r => r.classList.remove('selected'));
+            
+            // Tandai baris terpilih
+            const row = document.getElementById('row-' + log.id);
+            if (row) row.classList.add('selected');
+
+            // Sembunyikan placeholder, tampilkan pane detail
+            document.getElementById('mapPlaceholder').style.display = 'none';
+            const pane = document.getElementById('detailPane');
+            pane.classList.add('active');
+
+            // Set detail teks
+            document.getElementById('detailName').textContent = log.technician_name;
+            document.getElementById('detailClockIn').textContent = '📥 ' + log.clock_in;
+            document.getElementById('detailClockOut').textContent = log.clock_out ? '📤 ' + log.clock_out : '📤 Belum absen pulang';
+            
+            document.getElementById('detailLocIn').textContent = `📍 Lat: ${log.lat_in || '--'}, Lng: ${log.lng_in || '--'}`;
+            document.getElementById('detailLocOut').textContent = log.clock_out ? `📍 Lat: ${log.lat_out || '--'}, Lng: ${log.lng_out || '--'}` : '📍 Lat: --, Lng: --';
+            document.getElementById('detailNotes').textContent = log.notes || 'Tidak ada catatan tambahan.';
+
+            // Perbarui Peta & Penanda
+            if (!map) initMap();
+            markersGroup.clearLayers();
+
+            const latIn = parseFloat(log.lat_in);
+            const lngIn = parseFloat(log.lng_in);
+            const latOut = parseFloat(log.lat_out);
+            const lngOut = parseFloat(log.lng_out);
+
+            const points = [];
+
+            // Penanda Check In
+            if (!isNaN(latIn) && !isNaN(lngIn)) {
+                const markerIn = L.marker([latIn, lngIn], {
+                    icon: L.divIcon({
+                        html: '<div style="color:#10B981; font-size:24px;"><i class="fa-solid fa-circle-play"></i></div>',
+                        className: 'custom-div-icon', iconSize: [24, 24], iconAnchor: [12, 12]
+                    })
+                }).addTo(markersGroup).bindPopup(`<b>${log.technician_name} (Check In)</b><br>Waktu: ${log.clock_in}`);
+                points.push([latIn, lngIn]);
+            }
+
+            // Penanda Check Out
+            if (!isNaN(latOut) && !isNaN(lngOut)) {
+                const markerOut = L.marker([latOut, lngOut], {
+                    icon: L.divIcon({
+                        html: '<div style="color:#EF4444; font-size:24px;"><i class="fa-solid fa-circle-stop"></i></div>',
+                        className: 'custom-div-icon', iconSize: [24, 24], iconAnchor: [12, 12]
+                    })
+                }).addTo(markersGroup).bindPopup(`<b>${log.technician_name} (Check Out)</b><br>Waktu: ${log.clock_out}`);
+                points.push([latOut, lngOut]);
+            }
+
+            // Hubungkan dengan garis jika ada check-in & check-out
+            if (points.length === 2) {
+                L.polyline(points, { color: '#8B5CF6', weight: 3, dashArray: '5, 10' }).addTo(markersGroup);
+            }
+
+            // Arahkan peta
+            if (points.length > 0) {
+                map.fitBounds(markersGroup.getBounds().pad(0.2));
+            } else {
+                showToast('Lokasi GPS tidak tersedia untuk rekaman absensi ini.', 'error');
+            }
+        }
+
+        window.addEventListener('load', () => {
+            initMap();
+        });
+    </script>
+</body>

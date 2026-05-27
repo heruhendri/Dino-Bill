@@ -21,6 +21,10 @@ then
     sudo apt install -y mysql-server
 fi
 
+# Install FreeRADIUS & FreeRADIUS MySQL Module
+echo "Installing FreeRADIUS Server & MySQL module..."
+sudo apt install -y freeradius freeradius-mysql
+
 # Install Git
 sudo apt install -y git
 
