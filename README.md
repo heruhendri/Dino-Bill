@@ -1,27 +1,33 @@
-# Dino-Bill - ISP Management System 🦖
+# Dino-Bill - ISP Management System 🦖 [V1.0]
 
-Dino-Bill adalah sistem manajemen billing dan operasional ISP (Internet Service Provider) yang dirancang untuk berjalan secara autopilot. Terintegrasi dengan MikroTik (PPPoE), GenieACS (ONT Management), dan Tripay Payment Gateway.
+**Dino-Bill** adalah solusi *all-in-one* untuk manajemen billing dan operasional ISP (Internet Service Provider) yang dirancang untuk berjalan secara autopilot. Sistem ini memudahkan pengelolaan pelanggan, isolir otomatis, hingga integrasi pembayaran digital.
 
-## Fitur Utama
-- **Autopilot Billing**: Pembuatan invoice otomatis setiap bulan.
-- **Auto-Isolation**: Pemutusan internet otomatis bagi pelanggan menunggak.
-- **Payment Gateway**: Pembayaran otomatis via Tripay (QRIS, VA, E-Wallet).
-- **Portal Pelanggan**: Cek tagihan, lapor gangguan, dan ganti Nama/Password WiFi sendiri.
-- **Portal Teknisi & Sales**: Manajemen tugas lapangan dan lead penjualan.
-- **Notifikasi WhatsApp**: Pengiriman invoice, pengingat, dan bukti bayar otomatis.
-- **Integrasi OLT & ACS**: Pantau status ONT dan manajemen perangkat dari satu dashboard.
+---
+
+## 🚀 Fitur Utama
+- ✅ **Autopilot Billing**: Pembuatan invoice otomatis secara massal setiap bulan.
+- ✅ **Auto-Isolation**: Pemutusan layanan (isolir) otomatis bagi pelanggan yang menunggak (via MikroTik API).
+- ✅ **Payment Gateway**: Integrasi **Tripay** (QRIS, VA, E-Wallet) untuk konfirmasi pembayaran otomatis.
+- ✅ **Portal Pelanggan**: Cek tagihan, riwayat pembayaran, lapor gangguan, dan kontrol ONT mandiri.
+- ✅ **Portal Teknisi & Sales**: Manajemen tugas instalasi, perbaikan, dan manajemen lead penjualan.
+- ✅ **Notifikasi WhatsApp**: Pengiriman tagihan, pengingat jatuh tempo, dan bukti bayar otomatis (Local Engine).
+- ✅ **Integrasi OLT & ACS**: Monitoring status ONU (Signal, Status) dan manajemen parameter ONT via GenieACS.
+- ✅ **Peta Jaringan**: Visualisasi lokasi pelanggan, ODP, dan jalur kabel di Google Maps.
 
 ## Persyaratan Sistem
-- Ubuntu Server 20.04/22.04
-- Node.js v18+
-- MySQL / MariaDB Server
-- Git
+- OS: Ubuntu 20.04 / 22.04 (Rekomendasi)
+- CPU: 1 Core+, RAM: 1GB+
+- Node.js: v18+
+- Database: MySQL 8.0+ atau MariaDB 10.x
+- MikroTik: RouterOS v6.x / v7.x (API enabled)
 
-## Instalasi Cepat (Ubuntu)
-Jalankan perintah satu baris ini di terminal Ubuntu Anda:
+---
+
+## 🛠️ Instalasi Otomatis (Rekomendasi)
+Gunakan perintah satu baris ini untuk menginstall semua dependensi (Node.js, MySQL, PM2, Chrome) dan aplikasi secara otomatis:
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/heruhendri/Dino-Bill/public/install.sh | bash
+curl -sSL https://raw.githubusercontent.com/heruhendri/Dino-Bill/public/installer-vps.sh | bash
 ```
 
 ## Instalasi Manual
