@@ -116,13 +116,13 @@
 
                         <% if (plugin.is_active) { %>
                             <div class="license-box active">
-                                <div style="font-size:11px; color:var(--muted)">PASSWORD PLUGIN</div>
+                                <div style="font-size:11px; color:var(--muted)">LICENSE KEY</div>
                                 <code style="font-size:13px; color:var(--primary)"><%= plugin.license_key %></code>
                             </div>
                             <button class="btn btn-danger" onclick="deactivatePlugin(<%= plugin.id %>)" style="width:100%; justify-content:center">Nonaktifkan</button>
                         <% } else { %>
                             <div id="activateBox-<%= plugin.id %>" class="license-box">
-                                <input type="text" id="license-<%= plugin.id %>" class="form-control" placeholder="Masukkan Password (hendri)">
+                                <input type="text" id="license-<%= plugin.id %>" class="form-control" placeholder="Input License Key (DINO-XXXX)">
                                 <button class="btn btn-primary" onclick="submitActivation(<%= plugin.id %>)" style="width:100%; margin-top:10px; justify-content:center">Kirim Kode</button>
                             </div>
                             <button id="btnShow-<%= plugin.id %>" class="btn btn-primary" onclick="showActivate(<%= plugin.id %>)" style="width:100%; justify-content:center">Aktifkan Sekarang</button>

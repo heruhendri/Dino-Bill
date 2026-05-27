@@ -98,9 +98,9 @@ mysql -u root -p"$DB_PASS" -e "GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_US
 mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "CREATE TABLE IF NOT EXISTS plugins (id INT AUTO_INCREMENT PRIMARY KEY, plugin_key VARCHAR(255) UNIQUE, name VARCHAR(255), description TEXT, is_active TINYINT(1) DEFAULT 0, license_key VARCHAR(255), status VARCHAR(50));"
 mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "IF EXISTS (SELECT * FROM information_schema.COLUMNS WHERE TABLE_NAME='plugins' AND COLUMN_NAME='license_password') THEN ALTER TABLE plugins CHANGE license_password license_key VARCHAR(255); END IF;" 2>/dev/null
 
-# Tambahkan data plugin default (termasuk Absensi Teknisi) agar muncul di Dashboard
-mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "INSERT IGNORE INTO plugins (plugin_key, name, description, is_active, license_key) VALUES ('attendance', 'Absensi Teknisi', 'Fitur absensi harian untuk teknisi dengan lokasi GPS dan riwayat absensi.', 0, 'hendri');" 2>/dev/null
-mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "INSERT IGNORE INTO plugins (plugin_key, name, description, is_active, license_key) VALUES ('wa_bulk', 'WhatsApp Bulk', 'Kirim pesan massal ke pelanggan dengan satu klik.', 0, 'hendri');" 2>/dev/null
+# Daftarkan plugin default tanpa mengisi lisensi otomatis
+mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "INSERT IGNORE INTO plugins (plugin_key, name, description, is_active) VALUES ('attendance', 'Absensi Teknisi', 'Fitur absensi harian untuk teknisi dengan lokasi GPS dan riwayat absensi.', 0);" 2>/dev/null
+mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "INSERT IGNORE INTO plugins (plugin_key, name, description, is_active) VALUES ('wa_bulk', 'WhatsApp Bulk', 'Kirim pesan massal ke pelanggan dengan satu klik.', 0);" 2>/dev/null
 
 mysql -u root -p"$DB_PASS" -e "FLUSH PRIVILEGES;"
 echo -e "${YELLOW}Database $DB_NAME berhasil disiapkan.${NC}"
