@@ -94,9 +94,12 @@ mysql -u root -p"$DB_PASS" -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;"
 mysql -u root -p"$DB_PASS" -e "CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS';"
 mysql -u root -p"$DB_PASS" -e "GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost';"
 
-# Migrasi Nama Kolom Plugin (Key -> Password)
-mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "CREATE TABLE IF NOT EXISTS plugins (id INT AUTO_INCREMENT PRIMARY KEY, plugin_key VARCHAR(255), license_password VARCHAR(255), status VARCHAR(50));"
-mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "IF EXISTS (SELECT * FROM information_schema.COLUMNS WHERE TABLE_NAME='plugins' AND COLUMN_NAME='license_key') THEN ALTER TABLE plugins CHANGE license_key license_password VARCHAR(255); END IF;" 2>/dev/null
+# Pastikan tabel plugins menggunakan kolom license_key (kompatibilitas backend)
+mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "CREATE TABLE IF NOT EXISTS plugins (id INT AUTO_INCREMENT PRIMARY KEY, plugin_key VARCHAR(255), license_key VARCHAR(255), status VARCHAR(50));"
+mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "IF EXISTS (SELECT * FROM information_schema.COLUMNS WHERE TABLE_NAME='plugins' AND COLUMN_NAME='license_password') THEN ALTER TABLE plugins CHANGE license_password license_key VARCHAR(255); END IF;" 2>/dev/null
+
+# Set password lisensi plugin menjadi 'hendri' secara default
+mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "UPDATE plugins SET license_key = 'hendri' WHERE license_key IS NULL OR license_key = '';" 2>/dev/null
 
 mysql -u root -p"$DB_PASS" -e "FLUSH PRIVILEGES;"
 echo -e "${YELLOW}Database $DB_NAME berhasil disiapkan.${NC}"
