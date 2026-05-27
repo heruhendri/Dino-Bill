@@ -76,29 +76,29 @@ read -r USE_DEFAULT_DB < /dev/tty
 if [[ "$USE_DEFAULT_DB" =~ ^([yY][eE][sS]|[yY])$ ]]; then
     DB_NAME="dino_db"
     DB_USER="root"
-    DB_PASSWORD="root"
+    DB_PASS="root"
 else
     echo -ne "${YELLOW}Masukkan Nama Database: ${NC}"
     read -r DB_NAME < /dev/tty
     echo -ne "${YELLOW}Masukkan Username Database: ${NC}"
     read -r DB_USER < /dev/tty
     echo -ne "${YELLOW}Masukkan Password Database: ${NC}"
-    read -r DB_PASSWORD < /dev/tty
+    read -r DB_PASS < /dev/tty
 fi
 
 echo -e "${GREEN}>>> Menyiapkan Database di MySQL...${NC}"
 # Set password root jika belum ada dan buat database
-mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '$DB_PASSWORD';" 2>/dev/null || mysql -u root -p"$DB_PASSWORD" -e "SELECT 1;" &>/dev/null
+mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '$DB_PASS';" 2>/dev/null || mysql -u root -p"$DB_PASS" -e "SELECT 1;" &>/dev/null
 
-mysql -u root -p"$DB_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;"
-mysql -u root -p"$DB_PASSWORD" -e "CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASSWORD';"
-mysql -u root -p"$DB_PASSWORD" -e "GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost';"
+mysql -u root -p"$DB_PASS" -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;"
+mysql -u root -p"$DB_PASS" -e "CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS';"
+mysql -u root -p"$DB_PASS" -e "GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost';"
 
 # Migrasi Nama Kolom Plugin (Key -> Password)
-mysql -u root -p"$DB_PASSWORD" -D "$DB_NAME" -e "CREATE TABLE IF NOT EXISTS plugins (id INT AUTO_INCREMENT PRIMARY KEY, plugin_key VARCHAR(255), license_password VARCHAR(255), status VARCHAR(50));"
-mysql -u root -p"$DB_PASSWORD" -D "$DB_NAME" -e "IF EXISTS (SELECT * FROM information_schema.COLUMNS WHERE TABLE_NAME='plugins' AND COLUMN_NAME='license_key') THEN ALTER TABLE plugins CHANGE license_key license_password VARCHAR(255); END IF;" 2>/dev/null
+mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "CREATE TABLE IF NOT EXISTS plugins (id INT AUTO_INCREMENT PRIMARY KEY, plugin_key VARCHAR(255), license_password VARCHAR(255), status VARCHAR(50));"
+mysql -u root -p"$DB_PASS" -D "$DB_NAME" -e "IF EXISTS (SELECT * FROM information_schema.COLUMNS WHERE TABLE_NAME='plugins' AND COLUMN_NAME='license_key') THEN ALTER TABLE plugins CHANGE license_key license_password VARCHAR(255); END IF;" 2>/dev/null
 
-mysql -u root -p"$DB_PASSWORD" -e "FLUSH PRIVILEGES;"
+mysql -u root -p"$DB_PASS" -e "FLUSH PRIVILEGES;"
 echo -e "${YELLOW}Database $DB_NAME berhasil disiapkan.${NC}"
 
 # 5. Install Google Chrome (Untuk Engine WhatsApp)
@@ -136,7 +136,7 @@ DB_HOST=localhost
 DB_PORT=3306
 DB_NAME=$DB_NAME
 DB_USER=$DB_USER
-DB_PASSWORD=$DB_PASSWORD
+DB_PASS=$DB_PASS
 APP_PORT=3999
 APP_NAME=Dino-Bill
 NODE_ENV=production
