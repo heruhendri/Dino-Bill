@@ -33,13 +33,27 @@ else
 fi
 
 # 3. Install Node.js & NPM (Menggunakan NodeSource v18)
-echo -e "${GREEN}>>> Menginstall Node.js...${NC}"
-if [ "$PKG_MGR" == "apt-get" ]; then
-    curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
-    $PKG_MGR install -y nodejs
+echo -e "${GREEN}>>> Mengecek Node.js...${NC}"
+if command -v node &> /dev/null; then
+    NODE_VER=$(node -v)
+    echo -e "${YELLOW}Node.js sudah terinstall: $NODE_VER${NC}"
+    echo -ne "${YELLOW}Apakah Anda ingin menginstall ulang Node.js v18? (y/n): ${NC}"
+    read -r REINSTALL_NODE < /dev/tty
 else
-    curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
-    $PKG_MGR install -y nodejs
+    REINSTALL_NODE="y"
+fi
+
+if [[ "$REINSTALL_NODE" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+    echo -e "${GREEN}>>> Menginstall Node.js...${NC}"
+    if [ "$PKG_MGR" == "apt-get" ]; then
+        curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+        $PKG_MGR install -y nodejs
+    else
+        curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
+        $PKG_MGR install -y nodejs
+    fi
+else
+    echo -e "${YELLOW}>>> Menggunakan versi Node.js yang sudah ada.${NC}"
 fi
 
 # 4. Install MySQL Server
@@ -53,6 +67,34 @@ else
     systemctl enable mariadb
     systemctl start mariadb
 fi
+
+# 5. Konfigurasi Database
+echo -e "${GREEN}>>> Konfigurasi Database...${NC}"
+echo -ne "${YELLOW}Gunakan konfigurasi database default? (DB: dino_db, User: root, Pass: root) (y/n): ${NC}"
+read -r USE_DEFAULT_DB < /dev/tty
+
+if [[ "$USE_DEFAULT_DB" =~ ^([yY][eE][sS]|[yY])$ ]]; then
+    DB_NAME="dino_db"
+    DB_USER="root"
+    DB_PASS="root"
+else
+    echo -ne "${YELLOW}Masukkan Nama Database: ${NC}"
+    read -r DB_NAME < /dev/tty
+    echo -ne "${YELLOW}Masukkan Username Database: ${NC}"
+    read -r DB_USER < /dev/tty
+    echo -ne "${YELLOW}Masukkan Password Database: ${NC}"
+    read -r DB_PASS < /dev/tty
+fi
+
+echo -e "${GREEN}>>> Menyiapkan Database di MySQL...${NC}"
+# Mencoba set password root dan buat database
+mysql -e "ALTER USER 'root'@'localhost' IDENTIFIED WITH mysql_native_password BY '$DB_PASS';" 2>/dev/null || mysql -u root -p"$DB_PASS" -e "SELECT 1;" &>/dev/null
+
+mysql -u root -p"$DB_PASS" -e "CREATE DATABASE IF NOT EXISTS \`$DB_NAME\`;"
+mysql -u root -p"$DB_PASS" -e "CREATE USER IF NOT EXISTS '$DB_USER'@'localhost' IDENTIFIED BY '$DB_PASS';"
+mysql -u root -p"$DB_PASS" -e "GRANT ALL PRIVILEGES ON \`$DB_NAME\`.* TO '$DB_USER'@'localhost';"
+mysql -u root -p"$DB_PASS" -e "FLUSH PRIVILEGES;"
+echo -e "${YELLOW}Database $DB_NAME berhasil disiapkan.${NC}"
 
 # 5. Install Google Chrome (Untuk Engine WhatsApp)
 if [ "$PKG_MGR" == "apt-get" ]; then
@@ -81,6 +123,20 @@ fi
 # 8. Install Dependensi Proyek
 echo -e "${GREEN}>>> Menginstall Dependensi NPM (npm install)...${NC}"
 PUPPETEER_SKIP_DOWNLOAD=true npm install
+
+# 8.5 Generate .env file secara otomatis
+echo -e "${GREEN}>>> Membuat file konfigurasi .env...${NC}"
+cat <<EOF > .env
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=$DB_NAME
+DB_USER=$DB_USER
+DB_PASS=$DB_PASS
+APP_PORT=3999
+APP_NAME=Dino-Bill
+NODE_ENV=production
+SESSION_SECRET=$(openssl rand -hex 32)
+EOF
 
 # 9. Menjalankan Aplikasi dengan PM2
 echo -e "${GREEN}>>> Menjalankan aplikasi dengan PM2...${NC}"

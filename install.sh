@@ -7,8 +7,20 @@ echo "---------------------------------------"
 sudo apt update && sudo apt upgrade -y
 
 # Install Node.js
-if ! command -v node &> /dev/null
-then
+INSTALL_NODE=false
+if ! command -v node &> /dev/null; then
+    INSTALL_NODE=true
+else
+    NODE_VER=$(node -v)
+    echo "Node.js sudah terinstall: $NODE_VER"
+    echo -n "Apakah Anda ingin menginstall ulang Node.js v18? (y/n): "
+    read choice < /dev/tty
+    if [[ "$choice" =~ ^[Yy]$ ]]; then
+        INSTALL_NODE=true
+    fi
+fi
+
+if [ "$INSTALL_NODE" = true ]; then
     echo "Installing Node.js..."
     curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
     sudo apt install -y nodejs
@@ -20,10 +32,6 @@ then
     echo "Installing MySQL..."
     sudo apt install -y mysql-server
 fi
-
-# Install FreeRADIUS & FreeRADIUS MySQL Module
-echo "Installing FreeRADIUS Server & MySQL module..."
-sudo apt install -y freeradius freeradius-mysql
 
 # Install Git
 sudo apt install -y git
