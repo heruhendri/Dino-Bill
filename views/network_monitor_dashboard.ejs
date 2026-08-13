@@ -452,7 +452,7 @@
         async function fetchTrafficData() {
             if (!routerSelect.value || !interfaceInput.value) return;
             try {
-                const res = await fetch('/api/mikrotik/traffic?interface=' + interfaceInput.value);
+                const res = await fetch('/api/mikrotik/traffic?interface=' + interfaceInput.value + '&router=' + routerSelect.value);
                 const json = await res.json();
                 
                 if (json.success && json.data.length > 0) {

@@ -1,7 +1,33 @@
+# Node.js dependencies
 node_modules/
+
+# Environment configurations and secrets
 .env
+.env.*
+!.env.example
+
+# OS files
 .DS_Store
+Thumbs.db
+
+# Logs
 *.log
+npm-debug.log*
+
+# Lockfiles
 package-lock.json
-plugins/
+
+# Build outputs
 dist_secure/
+
+# WhatsApp Bot Session Credentials (CRITICAL SECRETS)
+.baileys_auth/
+.wwebjs_auth/
+
+# Scratch and Debug files
+scratch/
+optimize_mysql.sh
+
+# Database backups & dumps
+*.sql
+*.dump
