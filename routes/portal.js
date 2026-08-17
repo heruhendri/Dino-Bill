@@ -55,9 +55,16 @@ const requirePortalAuth = (req, res, next) => {
 };
 
 // GET /portal/login
-router.get('/login', (req, res) => {
+router.get('/login', async (req, res) => {
     if (req.session.customerId) return res.redirect('/portal');
-    res.render('portal_login', { error: null });
+    try {
+        const [rows] = await pool.query("SELECT setting_key, setting_value FROM settings");
+        const settings = {};
+        rows.forEach(r => settings[r.setting_key] = r.setting_value);
+        res.render('portal_login', { error: null, settings });
+    } catch (e) {
+        res.render('portal_login', { error: null, settings: {} });
+    }
 });
 
 // POST /portal/login
@@ -79,9 +86,20 @@ router.post('/login', async (req, res) => {
                 return res.redirect('/portal');
             }
         }
-        res.render('portal_login', { error: 'Username atau Password salah' });
+        
+        // Load settings to re-render login page
+        const [settingsRows] = await pool.query("SELECT setting_key, setting_value FROM settings");
+        const settings = {};
+        settingsRows.forEach(r => settings[r.setting_key] = r.setting_value);
+        
+        res.render('portal_login', { error: 'Username atau Password salah', settings });
     } catch (err) {
-        res.render('portal_login', { error: 'Terjadi kesalahan sistem' });
+        let settings = {};
+        try {
+            const [settingsRows] = await pool.query("SELECT setting_key, setting_value FROM settings");
+            settingsRows.forEach(r => settings[r.setting_key] = r.setting_value);
+        } catch(e) {}
+        res.render('portal_login', { error: 'Terjadi kesalahan sistem', settings });
     }
 });
 

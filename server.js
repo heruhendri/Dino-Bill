@@ -1162,6 +1162,8 @@ SESSION_SECRET=${Math.random().toString(36).substring(2, 15)}
     }
   });
 
+
+
   app.get('/api/mikrotik/interfaces', requireAdmin, async (req, res) => {
     try {
       const { router: routerId } = req.query;
@@ -1173,7 +1175,11 @@ SESSION_SECRET=${Math.random().toString(36).substring(2, 15)}
       const mikrotik = require('./helpers/mikrotik');
       const interfaces = await mikrotik.getInterfaces(router);
       
-      res.json({ success: true, data: interfaces || [] });
+      if (interfaces.success) {
+        res.json({ success: true, data: interfaces.data });
+      } else {
+        res.json({ success: false, message: interfaces.message });
+      }
     } catch (e) {
       res.json({ success: false, message: e.message });
     }
@@ -1264,7 +1270,8 @@ SESSION_SECRET=${Math.random().toString(36).substring(2, 15)}
         [recentInvoices],
         [recentCustomers],
         [[oltStats]],
-        [[routerStats]]
+        [[routerStats]],
+        [routersList]
       ] = await Promise.all([
         pool.query(`SELECT COUNT(*) as totalCustomers, SUM(CASE WHEN status='active' THEN 1 ELSE 0 END) as activeCustomers, SUM(CASE WHEN status='isolated' THEN 1 ELSE 0 END) as isolatedCustomers FROM customers`),
         pool.query(`SELECT SUM(CASE WHEN status='unpaid' THEN 1 ELSE 0 END) as unpaidInvoices, SUM(CASE WHEN status='unpaid' AND due_date < CURDATE() THEN 1 ELSE 0 END) as overdueInvoices, COALESCE(SUM(CASE WHEN status='paid' AND MONTH(paid_at)=MONTH(NOW()) AND YEAR(paid_at)=YEAR(NOW()) THEN amount ELSE 0 END), 0) as totalRevenue FROM invoices`),
@@ -1274,7 +1281,8 @@ SESSION_SECRET=${Math.random().toString(36).substring(2, 15)}
         pool.query(`SELECT i.*, c.name as customer_name FROM invoices i LEFT JOIN customers c ON i.customer_id = c.id ORDER BY i.created_at DESC LIMIT 10`),
         pool.query(`SELECT c.*, p.name as package_name FROM customers c LEFT JOIN packages p ON c.package_id = p.id ORDER BY c.created_at DESC LIMIT 5`),
         pool.query('SELECT COUNT(*) as total, SUM(CASE WHEN status="Up" THEN 1 ELSE 0 END) as online FROM hioso_onus'),
-        pool.query('SELECT COUNT(*) as total, SUM(CASE WHEN status="active" THEN 1 ELSE 0 END) as online FROM routers')
+        pool.query('SELECT COUNT(*) as total, SUM(CASE WHEN status="active" THEN 1 ELSE 0 END) as online FROM routers'),
+        pool.query("SELECT id, name FROM routers WHERE status = 'active'")
       ]);
 
       const openTickets = tRow?.openTickets || 0;
@@ -1301,6 +1309,7 @@ SESSION_SECRET=${Math.random().toString(36).substring(2, 15)}
         monthlyRevenue, monthlyCustomers, recentInvoices, recentCustomers,
         oltStats: oltStats || { total: 0, online: 0 },
         routerStats: routerStats || { total: 0, online: 0 },
+        routers: routersList || [],
         currentPage: 'dashboard'
       });
     } catch (err) {
@@ -1314,6 +1323,7 @@ SESSION_SECRET=${Math.random().toString(36).substring(2, 15)}
         recentCustomers: [],
         oltStats: { total: 0, online: 0 },
         routerStats: { total: 0, online: 0 },
+        routers: [],
         currentPage: 'dashboard'
       });
     }

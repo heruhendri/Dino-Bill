@@ -68,7 +68,11 @@
             
             <div class="footer">
                 Butuh bantuan akses?<br>
-                <a href="#">Hubungi Layanan Pelanggan</a>
+                <% if (typeof settings !== 'undefined' && settings.company_phone) { %>
+                    <a href="https://wa.me/<%= String(settings.company_phone).replace(/[^0-9]/g, '') %>?text=Halo%20layanan%20pelanggan%2C%20saya%20butuh%20bantuan%20akses%20portal%20pelanggan." target="_blank">Hubungi Layanan Pelanggan</a>
+                <% } else { %>
+                    <a href="#">Hubungi Layanan Pelanggan</a>
+                <% } %>
             </div>
         </div>
 
