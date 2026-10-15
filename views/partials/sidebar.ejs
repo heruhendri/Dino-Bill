@@ -1,7 +1,16 @@
 <div class="sidebar">
-    <div class="sidebar-brand">
-        <i class="fa-solid fa-dragon me-2"></i>Dino-Bill
+    <div class="sidebar-brand" style="display: flex; justify-content: space-between; align-items: center;">
+        <div><i class="fa-solid fa-dragon me-2"></i>Dino-Bill</div>
+        <button onclick="toggleSidebar(false)" class="mobile-close-btn" style="background:none; border:none; color:var(--text); cursor:pointer; font-size:20px; padding:0; line-height: 1;">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
     </div>
+    <style>
+        .mobile-close-btn { display: none !important; }
+        @media(max-width: 768px) {
+            .mobile-close-btn { display: block !important; }
+        }
+    </style>
 
     <div class="nav-menu">
         <div class="nav-section"><%= t.main %></div>
@@ -37,7 +46,7 @@
         <a href="/map" class="nav-item <%= currentPage === 'map' ? 'active' : '' %>">
             <i class="fa-solid fa-map-location-dot"></i> <%= t.map %>
         </a>
-        <a href="/hotspot" class="nav-item <%= currentPage === 'hotspot' ? 'active' : '' %>">
+        <a href="/hotspot" class="nav-item <%= (currentPage === 'hotspot' || currentPage === 'vouchers') ? 'active' : '' %>">
             <i class="fa-solid fa-wifi"></i> Hotspot
         </a>
         <a href="/inventory" class="nav-item <%= currentPage === 'inventory' ? 'active' : '' %>">
@@ -73,9 +82,18 @@
                     <i class="fa-solid fa-clock-rotate-left"></i> Absensi Teknisi
                 </a>
             <% } %>
+
+            <% if (plugins.portal_ads && plugins.portal_ads.is_active) { %>
+                <a href="/admin/ads" class="nav-item <%= currentPage === 'ads' ? 'active' : '' %>">
+                    <i class="fa-solid fa-rectangle-ad"></i> Iklan Portal
+                </a>
+            <% } %>
         <% } %>
 
         <div class="nav-section"><%= t.system %></div>
+        <a href="/logs" class="nav-item <%= currentPage === 'logs' ? 'active' : '' %>">
+            <i class="fa-solid fa-list"></i> <%= t.system_logs %>
+        </a>
         <a href="/settings" class="nav-item <%= currentPage === 'settings' ? 'active' : '' %>">
             <i class="fa-solid fa-gears"></i> <%= t.settings %>
         </a>

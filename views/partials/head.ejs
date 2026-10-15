@@ -4,10 +4,76 @@
     // Initial theme check to prevent flash
     const savedTheme = localStorage.getItem('theme') || 'dark';
     if (savedTheme === 'light') document.documentElement.classList.add('light-theme');
+
+    // SPA Instant Navigation: Only swap inner .content, keeping sidebar & layout intact
+    document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('click', async (e) => {
+            const link = e.target.closest('.sidebar .nav-item, a[data-pjax]');
+            if (!link || !link.href || !link.href.startsWith(window.location.origin)) return;
+            if (link.target || e.ctrlKey || e.metaKey || link.getAttribute('href') === '/logout') return;
+
+            e.preventDefault();
+            const targetUrl = link.href;
+            const contentEl = document.querySelector('.content');
+            if (!contentEl) { window.location.href = targetUrl; return; }
+
+            contentEl.style.opacity = '0.4';
+            contentEl.style.transition = 'opacity 0.15s ease';
+
+            try {
+                const res = await fetch(targetUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!res.ok) { window.location.href = targetUrl; return; }
+
+                const html = await res.text();
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                const newContent = doc.querySelector('.content');
+
+                if (newContent) {
+                    contentEl.innerHTML = newContent.innerHTML;
+                    document.title = doc.title || document.title;
+                    history.pushState({}, '', targetUrl);
+
+                    // Update active menu link in sidebar
+                    const targetPath = new URL(targetUrl, window.location.origin).pathname;
+                    document.querySelectorAll('.sidebar .nav-item').forEach(nav => {
+                        const navPath = new URL(nav.href, window.location.origin).pathname;
+                        if (navPath === targetPath) {
+                            nav.classList.add('active');
+                        } else {
+                            nav.classList.remove('active');
+                        }
+                    });
+
+                    // Re-execute scripts inside newly loaded content
+                    const scripts = newContent.querySelectorAll('script');
+                    scripts.forEach(oldScript => {
+                        const newScript = document.createElement('script');
+                        Array.from(oldScript.attributes).forEach(a => newScript.setAttribute(a.name, a.value));
+                        newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                        contentEl.appendChild(newScript);
+                    });
+
+                    // Close mobile sidebar if open
+                    if (window.toggleSidebar) window.toggleSidebar(false);
+                } else {
+                    window.location.href = targetUrl;
+                }
+            } catch (err) {
+                window.location.href = targetUrl;
+            } finally {
+                contentEl.style.opacity = '1';
+            }
+        });
+
+        window.addEventListener('popstate', () => {
+            window.location.reload();
+        });
+    });
 </script>
+<link rel="stylesheet" href="/css/outfit.css">
+<link rel="stylesheet" href="/css/all.min.css">
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
-    @import url('https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css');
     :root {
         --primary: #3B82F6; --secondary: #8B5CF6; 
         --bg-color: #0B0F19; --sidebar-bg: #111827;
@@ -55,7 +121,7 @@
     th, td { padding:13px 16px; text-align:left; border-bottom:1px solid var(--border); font-size:13px; }
     th { color:var(--muted); font-weight:500; font-size:12px; text-transform:uppercase; letter-spacing:.5px; }
     
-    .badge { padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+    .badge { padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600; display:inline-block; white-space:nowrap; }
     .badge-paid, .badge-active { background:rgba(16,185,129,.1); color:var(--success); border:1px solid rgba(16,185,129,.2); }
     .badge-unpaid, .badge-warning { background:rgba(245,158,11,.1); color:var(--warning); border:1px solid rgba(245,158,11,.2); }
     .badge-isolated, .badge-danger { background:rgba(239,68,68,.1); color:var(--danger); border:1px solid rgba(239,68,68,.2); }
@@ -63,6 +129,12 @@
     /* Form Controls */
     .form-control { padding:10px 14px; background:var(--input-bg); border:1px solid var(--border); border-radius:10px; color:var(--text); font-size:14px; outline:none; font-family:'Outfit',sans-serif; width: 100%; transition: all 0.2s; }
     .form-control:focus { border-color: var(--primary); }
+
+    .grid-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+    }
 
     /* Mobile Responsive */
     @media(max-width:768px) {
@@ -79,6 +151,23 @@
             z-index: 950; display: none;
         }
         .sidebar-overlay.active { display: block; }
+
+        .topbar { padding: 0 12px; }
+        .user-info { gap: 6px; }
+        .user-text { display: none; }
+        
+        .grid-2 { grid-template-columns: 1fr; gap: 16px; }
+        table {
+            display: block;
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+    }
+    @media(max-width:480px) {
+        .stats-grid {
+            grid-template-columns: 1fr !important;
+        }
     }
     
 </style>

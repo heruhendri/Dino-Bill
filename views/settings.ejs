@@ -44,6 +44,8 @@
             <button class="tab-btn" onclick="showTab('users')">👥 <%= t.manage_users %></button>
             <button class="tab-btn" onclick="showTab('wa_templates')">📝 <%= t.wa_templates %></button>
             <button class="tab-btn" onclick="showTab('system')">🔄 <%= t.system %></button>
+            <button class="tab-btn" onclick="showTab('appbuilder')" style="background:rgba(59,130,246,0.1);color:#3B82F6;border-color:rgba(59,130,246,0.3);">📱 App Builder</button>
+            <button class="tab-btn" onclick="showTab('isolir')" style="background:rgba(239, 68, 68, 0.1);color:#EF4444;border-color:rgba(239, 68, 68, 0.3);">🔒 Isolir Setup</button>
         </div>
 
         <div id="tab-company" class="tab-content card">
@@ -161,7 +163,7 @@
                         <div id="wa_status_badge" class="badge" style="margin-bottom:8px"><%= t.checking_status %></div>
                         <p style="font-size:12px; color:var(--muted); line-height:1.4">
                             <%= t.scan_qr_instruction %><br>
-                            <%= t.powered_by %> <b>whatsapp-web.js</b>.
+                            <%= t.powered_by %> <b>@whiskeysockets/baileys</b>.
                         </p>
                         <button class="btn btn-sm" style="margin-top:8px; font-size:11px; background:rgba(239,68,68,.1); color:#EF4444; border:1px solid rgba(239,68,68,.2)" onclick="restartWA()">🔄 <%= t.restart_wa %></button>
                     </div>
@@ -236,6 +238,9 @@
                     <option value="manual" <%=settings.payment_gateway==='manual'?'selected':''%>>Manual (Transfer/Cash)</option>
                     <option value="tripay" <%=settings.payment_gateway==='tripay'?'selected':''%>>Tripay</option>
                     <option value="midtrans" <%=settings.payment_gateway==='midtrans'?'selected':''%>>Midtrans</option>
+                    <option value="flip" <%=settings.payment_gateway==='flip'?'selected':''%>>Flip.id</option>
+                    <option value="xendit" <%=settings.payment_gateway==='xendit'?'selected':''%>>Xendit</option>
+                    <option value="duitku" <%=settings.payment_gateway==='duitku'?'selected':''%>>Duitku</option>
                 </select>
             </div>
             <hr style="border-color:var(--border);margin:16px 0">
@@ -246,6 +251,7 @@
             </div>
             <div class="form-group"><label><%= t.account_holder %></label><input type="text" id="bank_holder" class="form-control" value="<%=settings.bank_holder||''%>" placeholder="Contoh: ITO SOLUTION"></div>
             <div style="margin-bottom:20px"><button class="btn btn-primary" onclick="save(['bank_name','bank_account','bank_holder'])">💾 <%= t.save_bank_data %></button></div>
+            
             <hr style="border-color:var(--border);margin:16px 0">
             <h3 style="font-size:14px;color:var(--muted);margin:0 0 12px">Tripay</h3>
             <div class="form-row">
@@ -273,12 +279,101 @@
                 <label><%= t.callback_url %></label>
                 <div style="display:flex;gap:10px">
                     <input type="text" id="tripay_callback_url" class="form-control" readonly style="background:rgba(0,0,0,0.2);cursor:default" value="">
-                    <button class="btn btn-sm btn-info" onclick="copyCallback()"><%= t.copy %></button>
+                    <button class="btn btn-sm btn-info" onclick="navigator.clipboard.writeText(document.getElementById('tripay_callback_url').value); showToast('URL Callback copied', 'success');"><%= t.copy %></button>
                 </div>
-                <p class="setting-desc" style="margin-top:8px"><%= t.callback_instruction %></p>
+                <p class="setting-desc" style="margin-top:8px">Salin URL di atas dan tempel di dashboard merchant Tripay.</p>
             </div>
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
-                <button class="btn btn-primary" onclick="save(['payment_gateway','tripay_api_key','tripay_private_key','tripay_merchant_code','tripay_mode','tripay_channels'])">💾 <%= t.save %></button>
+
+            <hr style="border-color:var(--border);margin:16px 0">
+            <h3 style="font-size:14px;color:var(--muted);margin:0 0 12px">Midtrans</h3>
+            <div class="form-row">
+                <div class="form-group"><label>Client Key</label><input type="text" id="midtrans_client_key" class="form-control" value="<%=settings.midtrans_client_key||''%>"></div>
+                <div class="form-group"><label>Server Key</label><input type="text" id="midtrans_server_key" class="form-control" value="<%=settings.midtrans_server_key||''%>"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Mode</label>
+                    <select id="midtrans_mode" class="form-control">
+                        <option value="sandbox" <%=settings.midtrans_mode==='sandbox'?'selected':''%>>Sandbox</option>
+                        <option value="production" <%=settings.midtrans_mode==='production'?'selected':''%>>Production</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>URL Callback (Webhook)</label>
+                    <div style="display:flex;gap:10px">
+                        <input type="text" id="midtrans_cb_display" class="form-control" readonly style="background:rgba(0,0,0,0.2);cursor:default" value="">
+                        <button class="btn btn-sm btn-info" onclick="navigator.clipboard.writeText(document.getElementById('midtrans_cb_display').value); showToast('URL Callback copied', 'success');"><%= t.copy %></button>
+                    </div>
+                </div>
+            </div>
+
+            <hr style="border-color:var(--border);margin:16px 0">
+            <h3 style="font-size:14px;color:var(--muted);margin:0 0 12px">Flip.id</h3>
+            <div class="form-row">
+                <div class="form-group"><label>Secret Key</label><input type="text" id="flip_secret_key" class="form-control" value="<%=settings.flip_secret_key||''%>"></div>
+                <div class="form-group"><label>Validation Token</label><input type="text" id="flip_validation_token" class="form-control" value="<%=settings.flip_validation_token||''%>"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Mode</label>
+                    <select id="flip_mode" class="form-control">
+                        <option value="sandbox" <%=settings.flip_mode==='sandbox'?'selected':''%>>Sandbox</option>
+                        <option value="production" <%=settings.flip_mode==='production'?'selected':''%>>Production</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>URL Callback (Webhook)</label>
+                    <div style="display:flex;gap:10px">
+                        <input type="text" id="flip_cb_display" class="form-control" readonly style="background:rgba(0,0,0,0.2);cursor:default" value="">
+                        <button class="btn btn-sm btn-info" onclick="navigator.clipboard.writeText(document.getElementById('flip_cb_display').value); showToast('URL Callback copied', 'success');"><%= t.copy %></button>
+                    </div>
+                </div>
+            </div>
+
+            <hr style="border-color:var(--border);margin:16px 0">
+            <h3 style="font-size:14px;color:var(--muted);margin:0 0 12px">Xendit</h3>
+            <div class="form-row">
+                <div class="form-group"><label>Secret Key (API Key)</label><input type="text" id="xendit_secret_key" class="form-control" value="<%=settings.xendit_secret_key||''%>"></div>
+                <div class="form-group"><label>Callback Verification Token</label><input type="text" id="xendit_callback_token" class="form-control" value="<%=settings.xendit_callback_token||''%>"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Mode</label>
+                    <select id="xendit_mode" class="form-control">
+                        <option value="sandbox" <%=settings.xendit_mode==='sandbox'?'selected':''%>>Sandbox</option>
+                        <option value="production" <%=settings.xendit_mode==='production'?'selected':''%>>Production</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>URL Callback (Webhook)</label>
+                    <div style="display:flex;gap:10px">
+                        <input type="text" id="xendit_cb_display" class="form-control" readonly style="background:rgba(0,0,0,0.2);cursor:default" value="">
+                        <button class="btn btn-sm btn-info" onclick="navigator.clipboard.writeText(document.getElementById('xendit_cb_display').value); showToast('URL Callback copied', 'success');"><%= t.copy %></button>
+                    </div>
+                </div>
+            </div>
+
+            <hr style="border-color:var(--border);margin:16px 0">
+            <h3 style="font-size:14px;color:var(--muted);margin:0 0 12px">Duitku</h3>
+            <div class="form-row">
+                <div class="form-group"><label>Merchant Code</label><input type="text" id="duitku_merchant_code" class="form-control" value="<%=settings.duitku_merchant_code||''%>"></div>
+                <div class="form-group"><label>API Key / Merchant Key</label><input type="text" id="duitku_api_key" class="form-control" value="<%=settings.duitku_api_key||''%>"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Mode</label>
+                    <select id="duitku_mode" class="form-control">
+                        <option value="sandbox" <%=settings.duitku_mode==='sandbox'?'selected':''%>>Sandbox</option>
+                        <option value="production" <%=settings.duitku_mode==='production'?'selected':''%>>Production</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>URL Callback (Webhook)</label>
+                    <div style="display:flex;gap:10px">
+                        <input type="text" id="duitku_cb_display" class="form-control" readonly style="background:rgba(0,0,0,0.2);cursor:default" value="">
+                        <button class="btn btn-sm btn-info" onclick="navigator.clipboard.writeText(document.getElementById('duitku_cb_display').value); showToast('URL Callback copied', 'success');"><%= t.copy %></button>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:20px;">
+                <button class="btn btn-primary" onclick="save(['payment_gateway','tripay_api_key','tripay_private_key','tripay_merchant_code','tripay_mode','tripay_channels','midtrans_client_key','midtrans_server_key','midtrans_mode','flip_secret_key','flip_validation_token','flip_mode','xendit_secret_key','xendit_callback_token','xendit_mode','duitku_merchant_code','duitku_api_key','duitku_mode'])">💾 <%= t.save %></button>
                 <button class="btn" style="background:rgba(99,102,241,.15);color:#818CF8;border:1px solid rgba(99,102,241,.3)" onclick="testTripay()">💳 Test & Muat Channel</button>
             </div>
         </div>
@@ -349,7 +444,7 @@
         <!-- Tab: Users -->
         <div id="tab-users" class="tab-content card" style="display:none">
             <h2 class="section-title">👥 <%= t.manage_system_users %></h2>
-            <div style="display:grid; grid-template-columns:1fr 1.5fr; gap:24px;">
+            <div class="grid-2" style="grid-template-columns:1fr 1.5fr; gap:24px;">
                 <div>
                     <h3 style="font-size:14px; margin-bottom:12px"><%= t.add_new_user %></h3>
                     <div class="form-group"><label><%= t.username %></label><input type="text" id="u_user" class="form-control" placeholder="username"></div>
@@ -407,18 +502,74 @@
 
         <div id="tab-import" class="tab-content card" style="display:none">
             <h2 class="section-title">📤 <%= t.import_export_data %></h2>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+            <div class="grid-2">
                 <div>
                     <h3 style="font-size:14px;margin:0 0 12px">⬇️ Export</h3>
                     <a href="/export/customers" class="btn" style="background:rgba(16,185,129,.15);color:var(--success);border:1px solid rgba(16,185,129,.3);display:block;text-align:center;text-decoration:none;margin-bottom:8px">📥 <%= t.export_customers_csv %></a>
-                    <a href="/export/invoices" class="btn" style="background:rgba(16,185,129,.15);color:var(--success);border:1px solid rgba(16,185,129,.3);display:block;text-align:center;text-decoration:none">📥 <%= t.export_invoices_csv %></a>
+                    <a href="/export/invoices" class="btn" style="background:rgba(16,185,129,.15);color:var(--success);border:1px solid rgba(16,185,129,.3);display:block;text-align:center;text-decoration:none;margin-bottom:8px">📥 <%= t.export_invoices_csv %></a>
+                    <a href="/export/database" class="btn" style="background:rgba(59,130,246,.15);color:var(--primary);border:1px solid rgba(59,130,246,.3);display:block;text-align:center;text-decoration:none;margin-bottom:20px">💾 Unduh Backup Database (.sql)</a>
+                    
+                    <h3 style="font-size:14px;margin:0 0 12px;color:var(--danger)">⚠️ Restore Database</h3>
+                    <p style="font-size:11px;color:var(--muted);margin:0 0 8px">PERINGATAN: Ini akan menimpa seluruh data Anda!</p>
+                    <input type="file" id="db_file_input" accept=".sql" style="display:none" onchange="uploadDatabaseBackup()">
+                    <button type="button" class="btn" style="background:rgba(239,68,68,.15);color:var(--danger);border:1px solid rgba(239,68,68,.3);display:block;width:100%;text-align:center;justify-content:center" onclick="document.getElementById('db_file_input').click()">⚠️ Upload & Restore (.sql)</button>
                 </div>
                 <div>
                     <h3 style="font-size:14px;margin:0 0 12px">⬆️ <%= t.import_customers %></h3>
                     <p style="font-size:12px;color:var(--muted);margin:0 0 8px"><%= t.csv_format_info %></p>
+                    <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <input type="file" id="csv_file_input" accept=".csv" style="display:none" onchange="handleCSVFile(event)">
+                        <button type="button" class="btn btn-sm" style="background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text)" onclick="document.getElementById('csv_file_input').click()">📁 Pilih File CSV</button>
+                        <span id="csv_file_name" style="font-size:11px;color:var(--muted)">Atau paste isi CSV di bawah</span>
+                    </div>
                     <textarea id="csv_import" class="form-control" rows="6" placeholder="<%= t.paste_csv_placeholder %>"></textarea>
                     <button class="btn btn-primary" onclick="importCSV()" style="margin-top:10px;width:100%;justify-content:center">⬆️ <%= t.import_now %></button>
                 </div>
+            </div>
+        </div>
+
+        <!-- Tab: App Builder -->
+        <div id="tab-appbuilder" class="tab-content card" style="display:none">
+            <h2 class="section-title">📱 Mobile App Builder</h2>
+            <p class="setting-desc" style="margin-bottom:20px;">Konfigurasi dan bentuk aplikasi PWA (Web Instan) atau Export menjadi *Source Code* Android WebView yang siap dibuild menjadi file `.apk` atau `.aab`.</p>
+
+            <div class="form-row">
+                <div class="form-group"><label>Nama Aplikasi Penuh</label><input type="text" id="pwa_app_name" class="form-control" value="<%= settings.pwa_app_name||'Dino Bill Customer'%>" placeholder="Dino Bill Customer"></div>
+                <div class="form-group"><label>Nama Singkat (Ikon Menu)</label><input type="text" id="pwa_short_name" class="form-control" value="<%= settings.pwa_short_name||'DinoBill'%>" placeholder="DinoBill"></div>
+            </div>
+            <div class="form-row">
+                <div class="form-group"><label>Warna Tema Utama (Hex)</label><input type="color" id="pwa_theme_color" class="form-control" style="height:50px;padding:5px;" value="<%= settings.pwa_theme_color||'#3B82F6'%>"></div>
+                <div class="form-group"><label>URL Dino-Bill Anda</label><input type="text" id="pwa_app_url" class="form-control" value="<%= settings.pwa_app_url||'https://'%>" placeholder="https://billing.isp-anda.com"></div>
+            </div>
+
+            <div class="setting-group" style="margin-top:20px; padding-top:20px; border-top:1px solid var(--border);">
+                <h3 class="section-title" style="border:none; margin-bottom:10px; padding:0;">🖼️ Ikon Aplikasi (Logo)</h3>
+                <p class="setting-desc">Pilih ikon bujur sangkar (disarankan 512x512px). Ikon ini akan muncul di layar utama HP pelanggan saat diinstall.</p>
+                <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap; margin-top: 15px;">
+                    <div id="pwa-icon-preview-container" style="background: rgba(255,255,255,0.02); border: 2px dashed var(--border); border-radius: 16px; width: 100px; height: 100px; display: flex; align-items: center; justify-content: center; overflow: hidden; padding: 5px; transition: all 0.3s;">
+                        <% if (settings.pwa_icon_url) { %>
+                            <img id="pwa-icon-preview" src="<%= settings.pwa_icon_url %>" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+                        <% } else { %>
+                            <div id="pwa-icon-placeholder" style="text-align: center; color: var(--muted); font-size: 12px; line-height: 1.5;">
+                                <span style="font-size: 24px; display: block; margin-bottom: 4px;">📱</span>
+                                Belum Ada Ikon
+                            </div>
+                        <% } %>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <input type="file" id="pwa_icon_input" accept="image/png" style="display: none;" onchange="previewPwaIcon(event)">
+                        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            <button type="button" class="btn btn-sm" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border); color: var(--text);" onclick="document.getElementById('pwa_icon_input').click()">📁 Pilih Gambar PNG</button>
+                            <button type="button" id="btn-upload-pwa-icon" class="btn btn-sm btn-primary" onclick="uploadPwaIcon()" style="display: none;">📤 Unggah Ikon</button>
+                        </div>
+                        <span style="font-size: 11px; color: var(--muted);">Hanya mendukung PNG (wajib). Maks 2MB.</span>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:30px;">
+                <button class="btn btn-primary" onclick="generatePWA()" style="flex:1;"><span style="font-size:18px;margin-right:8px;">🚀</span> <b>Generate PWA & Simpan</b><br><small style="font-weight:400;opacity:0.8;">Instalasi instan tanpa APK via Browser</small></button>
+                <button class="btn" style="flex:1;background:rgba(16,185,129,.1);color:#10B981;border:1px solid rgba(16,185,129,.3);" onclick="downloadAndroidSource()"><span style="font-size:18px;margin-right:8px;">📦</span> <b>Download Source Android (.zip)</b><br><small style="font-weight:400;opacity:0.8;">Build mandiri dengan Android Studio</small></button>
             </div>
         </div>
 
@@ -437,6 +588,55 @@
                     <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24" style="margin-right:8px"><path d="M11.944 0A12 12 0 000 12a12 12 0 0012 12 12 12 0 0012-12A12 12 0 0012 0a12 12 0 00-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 01.171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.506-1.524 5.845-2.528 7.016-3.013 3.333-1.386 4.025-1.627 4.477-1.635z"/></svg>
                     Gabung Grup Telegram
                 </a>
+            </div>
+        </div>
+
+        <div id="tab-isolir" class="tab-content card" style="display:none">
+            <h2 class="section-title">🔒 Setup Isolir MikroTik</h2>
+            <p class="setting-desc">Isi pengaturan di bawah ini untuk menghasilkan script Terminal MikroTik. Anda tinggal menyalin (*copy*) script yang muncul dan menempelkannya (*paste*) di terminal MikroTik untuk mengaktifkan fitur Isolir (Walled Garden & NAT Redirect).</p>
+            
+            <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin-bottom: 25px;">
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="font-weight: 600; display: block; margin-bottom: 8px;">Metode Isolir Pelanggan</label>
+                    <select id="isolir_method" class="form-control" style="max-width: 400px;">
+                        <option value="disable" <%= settings.isolir_method === 'disable' ? 'selected' : '' %>>Disable PPPoE Secret (Nonaktifkan Akun)</option>
+                        <option value="move_package" <%= settings.isolir_method === 'move_package' || !settings.isolir_method ? 'selected' : '' %>>Pindahkan ke Paket Isolir (Profil Redirection)</option>
+                    </select>
+                    <span style="font-size: 11px; color: var(--muted); display: block; margin-top: 6px;">Pilih bagaimana sistem memproses isolir saat pelanggan dinonaktifkan/jatuh tempo.</span>
+                </div>
+                <button class="btn btn-primary" onclick="save(['isolir_method'])">💾 Simpan Metode Isolir</button>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>IP / Domain Dino-Bill</label>
+                    <input type="text" id="isolir_dino_ip" class="form-control" value="10.10.10.1" onkeyup="generateIsolirScript()">
+                    <span style="font-size: 11px; color: var(--muted);">Contoh: 192.168.1.100 atau billing.ispku.com</span>
+                </div>
+                <div class="form-group">
+                    <label>Port Aplikasi (Web)</label>
+                    <input type="number" id="isolir_dino_port" class="form-control" value="3999" onkeyup="generateIsolirScript()">
+                    <span style="font-size: 11px; color: var(--muted);">Port aplikasi Dino-Bill berjalan (default 3999).</span>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Nama Address List Isolir</label>
+                    <input type="text" id="isolir_addr_list" class="form-control" value="ISOLIR_LIST" onkeyup="generateIsolirScript()">
+                </div>
+                <div class="form-group">
+                    <label>Nama Profile Isolir (PPPoE / Hotspot)</label>
+                    <input type="text" id="isolir_profile_name" class="form-control" value="ISOLIR" onkeyup="generateIsolirScript()">
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-top:20px;">
+                <label>Script Terminal MikroTik (Copy & Paste ke Terminal Router Anda)</label>
+                <div style="position: relative;">
+                    <textarea id="isolir_script_output" class="form-control" rows="12" readonly style="background: rgba(0,0,0,0.3); font-family: monospace; color: #10B981; font-size: 12px; line-height: 1.5; resize: vertical; cursor: text;"></textarea>
+                    <button class="btn btn-sm btn-primary" onclick="copyIsolirScript()" style="position: absolute; top: 10px; right: 10px;">📋 Copy Script</button>
+                </div>
             </div>
         </div>
     </div>
@@ -472,7 +672,122 @@ async function importCSV(){
     if(!confirm('<%= t.import_customers %>?'))return;
     const res=await fetch('/import/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({csv_data:csv})});
     const d=await res.json();showToast(d.message,d.success?'success':'error');
-    if(d.success)document.getElementById('csv_import').value='';
+    if(d.success){
+        document.getElementById('csv_import').value='';
+        setTimeout(()=>location.reload(),1500);
+    }
+}
+function generateIsolirScript() {
+    const ip = document.getElementById('isolir_dino_ip').value || '192.168.1.10';
+    const port = document.getElementById('isolir_dino_port').value || '3999';
+    const addrList = document.getElementById('isolir_addr_list').value || 'ISOLIR_LIST';
+    const profName = document.getElementById('isolir_profile_name').value || 'ISOLIR';
+    
+    const script = `# ==============================================================================
+# SCRIPT GENERATOR ISOLIR DINO-BILL
+# Pastikan interface lokal (menuju pelanggan) disesuaikan jika perlu.
+# ==============================================================================
+
+# 1. Buka akses ke payment gateway (Tripay, Midtrans, dll) dan Dino-Bill (Bypass Walled Garden)
+/ip firewall address-list
+add address=${ip} list=BYPASS_ISOLIR comment="Dino-Bill Server"
+add address=app.sandbox.midtrans.com list=BYPASS_ISOLIR
+add address=app.midtrans.com list=BYPASS_ISOLIR
+add address=tripay.co.id list=BYPASS_ISOLIR
+add address=payment.tripay.co.id list=BYPASS_ISOLIR
+add address=api.xendit.co list=BYPASS_ISOLIR
+
+# 2. Redirect pelanggan Isolir ke halaman Isolir Dino-Bill
+/ip firewall nat
+add action=dst-nat chain=dstnat comment="Redirect Isolir ke Dino-Bill" \\
+    dst-port=80,443 protocol=tcp src-address-list=${addrList} \\
+    dst-address-list=!BYPASS_ISOLIR to-addresses=${ip} to-ports=${port}
+
+# 3. Buat Profile PPPoE Isolir
+/ppp profile
+add name=${profName} address-list=${addrList} comment="Profile Isolir PPPoE"
+
+# 4. Buat Profile Hotspot Isolir (opsional jika pakai hotspot)
+/ip hotspot user profile
+add name=${profName} address-list=${addrList} comment="Profile Isolir Hotspot"
+
+# ==============================================================================
+# SELESAI. Pelanggan yang dimasukkan ke profile "${profName}" akan terisolir.
+# ==============================================================================
+`;
+    const outputEl = document.getElementById('isolir_script_output');
+    if (outputEl) outputEl.value = script;
+}
+
+function copyIsolirScript() {
+    const el = document.getElementById('isolir_script_output');
+    el.select();
+    try {
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(el.value)
+                .then(() => showToast('Script tersalin!', 'success'))
+                .catch(() => fallbackCopy(el));
+        } else {
+            fallbackCopy(el);
+        }
+    } catch (e) {
+        showToast('Gagal menyalin script', 'error');
+    }
+}
+
+function fallbackCopy(el) {
+    document.execCommand('copy');
+    showToast('Script tersalin! (Fallback)', 'success');
+}
+
+
+// Generate script on load
+window.addEventListener('DOMContentLoaded', () => {
+    if (document.getElementById('isolir_dino_ip')) {
+        generateIsolirScript();
+    }
+});
+function handleCSVFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    document.getElementById('csv_file_name').textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        document.getElementById('csv_import').value = e.target.result;
+    };
+    reader.readAsText(file);
+}
+async function uploadDatabaseBackup() {
+    const fileInput = document.getElementById('db_file_input');
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    if (!confirm('PERINGATAN KERAS!\n\nMelakukan restore database akan MENGHAPUS SEMUA DATA SAAT INI dan menggantinya dengan data dari file backup. Apakah Anda 100% yakin ingin melanjutkan?')) {
+        fileInput.value = '';
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('sql_file', file);
+
+    showToast('⏳ Memulihkan database... mohon tunggu...', 'warning');
+    
+    try {
+        const res = await fetch('/import/database', {
+            method: 'POST',
+            body: formData
+        });
+        const d = await res.json();
+        if (d.success) {
+            showToast('✅ ' + d.message, 'success');
+            setTimeout(() => window.location.reload(), 2000);
+        } else {
+            showToast('❌ ' + d.message, 'error');
+        }
+    } catch (e) {
+        showToast('❌ Gagal menghubungi server: ' + e.message, 'error');
+    }
+    fileInput.value = '';
 }
 async function testACS(){
     const url=document.getElementById('acs_url').value;
@@ -630,6 +945,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const cbInput = document.getElementById('tripay_callback_url');
     if (cbInput) cbInput.value = window.location.origin + '/api/tripay/callback';
     
+    const midtransCb = document.getElementById('midtrans_cb_display');
+    if (midtransCb) midtransCb.value = window.location.origin + '/api/midtrans/callback';
+
+    const flipCb = document.getElementById('flip_cb_display');
+    if (flipCb) flipCb.value = window.location.origin + '/api/flip/callback';
+
+    const xenditCb = document.getElementById('xendit_cb_display');
+    if (xenditCb) xenditCb.value = window.location.origin + '/api/xendit/callback';
+
+    const duitkuCb = document.getElementById('duitku_cb_display');
+    if (duitkuCb) duitkuCb.value = window.location.origin + '/api/duitku/callback';
+    
     toggleWAFields();
     setInterval(checkWAStatus, 5000);
     checkWAStatus();
@@ -666,29 +993,32 @@ async function checkWAStatus() {
     if (provider !== 'local') return;
 
     try {
-        const res = await fetch('/settings/whatsapp-status');
+        const res = await fetch('/settings/whatsapp-status?_=' + Date.now());
         const d = await res.json();
         
         const badge = document.getElementById('wa_status_badge');
         const qrContainer = document.getElementById('wa_qr_container');
         
-        badge.textContent = d.status;
         if (d.status === 'READY' || d.status === 'AUTHENTICATED') {
+            badge.textContent = 'CONNECTED';
             badge.style.background = 'rgba(16,185,129,.15)';
             badge.style.color = '#10B981';
-            qrContainer.innerHTML = '✅ Connected';
-        } else if (d.status === 'INITIALIZING') {
+            qrContainer.innerHTML = '<span style="color:#10B981; font-weight:600; font-size:14px">✅ Connected</span>';
+        } else if (d.qr) {
+            badge.textContent = 'SILAKAN SCAN QR';
             badge.style.background = 'rgba(245,158,11,.15)';
             badge.style.color = '#F59E0B';
-            qrContainer.innerHTML = '⏳ Booting...';
+            qrContainer.innerHTML = `<img src="${d.qr}" style="width:100%; height:100%; object-fit:contain">`;
+        } else if (d.status === 'INITIALIZING') {
+            badge.textContent = 'INITIALIZING';
+            badge.style.background = 'rgba(245,158,11,.15)';
+            badge.style.color = '#F59E0B';
+            qrContainer.innerHTML = '<span style="color:black; font-size:12px; text-align:center">⏳ Booting...</span>';
         } else {
+            badge.textContent = 'DISCONNECTED';
             badge.style.background = 'rgba(239,68,68,.15)';
             badge.style.color = '#EF4444';
-            if (d.qr) {
-                qrContainer.innerHTML = `<img src="${d.qr}" style="width:100%; height:100%; object-fit:contain">`;
-            } else {
-                qrContainer.innerHTML = 'Memuat QR...';
-            }
+            qrContainer.innerHTML = '<span style="color:black; font-size:12px; text-align:center">Memuat QR...</span>';
         }
     } catch (e) {
         console.error('Failed to fetch WA status:', e);
@@ -865,6 +1195,86 @@ async function clearQris() {
     } catch (e) {
         showToast('Gagal menghapus QRIS: ' + e.message, 'error');
     }
+}
+
+function previewPwaIcon(event) {
+    const file = event.target.files[0];
+    if (file) {
+        if (file.type !== 'image/png') {
+            showToast('Hanya file PNG yang diizinkan untuk ikon PWA', 'error');
+            event.target.value = '';
+            return;
+        }
+        if (file.size > 2 * 1024 * 1024) {
+            showToast('Ukuran file maksimal adalah 2MB', 'error');
+            event.target.value = '';
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const container = document.getElementById('pwa-icon-preview-container');
+            container.innerHTML = `<img id="pwa-icon-preview" src="${e.target.result}" style="max-width: 100%; max-height: 100%; object-fit: contain;">`;
+            document.getElementById('btn-upload-pwa-icon').style.display = 'inline-block';
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+async function uploadPwaIcon() {
+    const fileInput = document.getElementById('pwa_icon_input');
+    const file = fileInput.files[0];
+    if (!file) return showToast('Pilih file ikon PNG terlebih dahulu', 'error');
+
+    const formData = new FormData();
+    formData.append('pwa_icon', file);
+
+    showToast('⏳ Mengunggah ikon...', 'success');
+    try {
+        const res = await fetch('/settings/api/upload-pwa-icon', {
+            method: 'POST',
+            body: formData
+        });
+        const d = await res.json();
+        showToast(d.message, d.success ? 'success' : 'error');
+        if (d.success) {
+            document.getElementById('btn-upload-pwa-icon').style.display = 'none';
+        }
+    } catch (e) {
+        showToast('Gagal mengunggah ikon: ' + e.message, 'error');
+    }
+}
+
+async function generatePWA() {
+    const appName = document.getElementById('pwa_app_name').value;
+    const shortName = document.getElementById('pwa_short_name').value;
+    const themeColor = document.getElementById('pwa_theme_color').value;
+    const appUrl = document.getElementById('pwa_app_url').value;
+
+    showToast('⏳ Membuat konfigurasi PWA...', 'success');
+    try {
+        const res = await fetch('/settings/api/generate-pwa', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pwa_app_name: appName, pwa_short_name: shortName, pwa_theme_color: themeColor, pwa_app_url: appUrl })
+        });
+        const d = await res.json();
+        showToast(d.message, d.success ? 'success' : 'error');
+    } catch (e) {
+        showToast('Gagal memproses PWA: ' + e.message, 'error');
+    }
+}
+
+function downloadAndroidSource() {
+    const appName = document.getElementById('pwa_app_name').value;
+    const appUrl = document.getElementById('pwa_app_url').value;
+    const themeColor = document.getElementById('pwa_theme_color').value;
+    
+    if(!appName || !appUrl) {
+        return showToast('Nama Aplikasi dan URL wajib diisi!', 'error');
+    }
+    
+    showToast('⏳ Sedang merakit Source Code (ZIP)...', 'success');
+    window.location.href = `/settings/api/download-android-source?app_name=${encodeURIComponent(appName)}&url=${encodeURIComponent(appUrl)}&color=${encodeURIComponent(themeColor)}`;
 }
 
 function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.style.borderColor=type==='success'?'rgba(16,185,129,.4)':'rgba(239,68,68,.4)';t.style.color=type==='success'?'#10B981':'#EF4444';t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3500);}

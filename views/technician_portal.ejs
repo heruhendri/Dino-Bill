@@ -34,10 +34,75 @@
         /* Map Styles */
         #map-container { position: fixed; top: 75px; left: 0; right: 0; bottom: 85px; z-index: 900; display: none; }
         #map { width: 100%; height: 100%; }
+        #my-location-btn {
+            position: absolute;
+            bottom: 25px;
+            right: 20px;
+            z-index: 1000;
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            color: var(--text);
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+            transition: all 0.2s ease;
+        }
+        #my-location-btn:hover { transform: scale(1.08); background: var(--sidebar-bg); }
+        #my-location-btn:active { transform: scale(0.92); }
+        #my-location-btn i { font-size: 18px; color: var(--primary); }
         .leaflet-popup-content-wrapper { background: var(--card-bg); color: var(--text); border: 1px solid var(--border); border-radius: 12px; }
+        
+        /* Premium Layer Control Styling */
+        .leaflet-control-layers {
+            background: var(--card-bg) !important;
+            border: 1px solid var(--border) !important;
+            color: var(--text) !important;
+            border-radius: 12px !important;
+            font-family: 'Outfit', sans-serif !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.25) !important;
+            padding: 6px 10px !important;
+        }
+        .leaflet-control-layers-toggle {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512' fill='%238B5CF6'%3E%3Cpath d='M12 307.2l230.4 122.8c6.4 3.4 14.1 3.4 20.5 0L492 307.2c12.5-6.7 17.2-22.1 10.5-34.6s-22.1-17.2-34.6-10.5L256 374.8l-211.9-113c-12.5-6.7-27.9-1.9-34.6 10.5S-1.9 300.5 12 307.2zM245.8 459.7c6.4 3.4 14.1 3.4 20.5 0l215.1-114.7c12.5-6.7 17.2-22.1 10.5-34.6s-22.1-17.2-34.6-10.5L256 409.2l-201.2-107.3c-12.5-6.7-27.9-2-34.6 10.5s-2 27.9 10.5 34.6l215.1 112.7zm10.2-223c6.4 3.4 14.1 3.4 20.5 0L492 119.8c12.5-6.7 17.2-22.1 10.5-34.6s-22.1-17.2-34.6-10.5L256 187.3l-211.9-113c-12.5-6.7-27.9-2-34.6 10.5S-1.9 113.1 12 119.8l230.4 122.8c3.2 1.7 7.1 2.6 11 2.6z'/%3E%3C/svg%3E") !important;
+            background-size: 18px 18px !important;
+            background-position: center !important;
+        }
+        .leaflet-control-layers-list label {
+            margin: 5px 0 !important;
+            cursor: pointer !important;
+            font-size: 13px !important;
+            font-weight: 500 !important;
+            display: flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+        }
+        .leaflet-control-layers-selector {
+            margin-top: 0 !important;
+            cursor: pointer !important;
+        }
+        
+        @keyframes pulse-ping {
+            0% { transform: scale(0.5); opacity: 1; }
+            100% { transform: scale(1.8); opacity: 0; }
+        }
         .leaflet-popup-tip { background: var(--card-bg); }
         .popup-title { font-weight: 700; font-size: 14px; margin-bottom: 4px; display: block; }
         .popup-address { font-size: 11px; color: var(--muted); }
+
+        /* Flowing Cable Animation */
+        @keyframes flow {
+            from { stroke-dashoffset: 20; }
+            to { stroke-dashoffset: 0; }
+        }
+        .flow-line {
+            stroke-dasharray: 10, 10;
+            animation: flow 1s linear infinite;
+        }
     </style>
 </head>
 <body>
@@ -213,6 +278,9 @@
     <!-- Map Container -->
     <div id="map-container">
         <div id="map"></div>
+        <button id="my-location-btn" title="Lokasi Saya">
+            <i class="fas fa-crosshairs"></i>
+        </button>
     </div>
 
     <div class="bottom-nav">
@@ -259,13 +327,38 @@
         }
 
         function initMap() {
-            map = L.map('map').setView([-6.200000, 106.816666], 13);
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(map);
+            try {
+                console.log("[TECH MAP] Initializing map...");
+                console.log("[TECH MAP] mapCables:", mapCables);
+                console.log("[TECH MAP] mapObjects:", mapObjects);
+                console.log("[TECH MAP] customerMarkers:", customerMarkers);
 
-            const markers = L.featureGroup();
-            const infraGroup = L.layerGroup().addTo(map);
+                const streetMap = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+                    maxZoom: 20,
+                    maxNativeZoom: 20
+                });
+
+                const satelliteMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                    attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community',
+                    maxZoom: 20,
+                    maxNativeZoom: 20
+                });
+
+                map = L.map('map', { 
+                    maxZoom: 22,
+                    layers: [streetMap]
+                }).setView([-6.200000, 106.816666], 13);
+
+                const baseMaps = {
+                    "Peta Jalan": streetMap,
+                    "Satelit": satelliteMap
+                };
+
+                L.control.layers(baseMaps, null, { position: 'topright' }).addTo(map);
+
+                const markers = L.featureGroup();
+                const infraGroup = L.layerGroup().addTo(map);
 
             // Icons
             const serverIcon = L.divIcon({
@@ -279,13 +372,41 @@
 
             // Render Infrastructure
             mapObjects.forEach(obj => {
+                if (!obj.lat || !obj.lng) return;
+                const latNum = parseFloat(obj.lat);
+                const lngNum = parseFloat(obj.lng);
+                if (isNaN(latNum) || isNaN(lngNum)) return;
+
                 const icon = obj.type === 'server' ? serverIcon : odpIcon;
-                L.marker([obj.lat, obj.lng], { icon }).addTo(infraGroup)
+                L.marker([latNum, lngNum], { icon }).addTo(infraGroup)
                     .bindPopup(`<b>${obj.name}</b><br>Tipe: ${obj.type.toUpperCase()}`);
             });
 
             mapCables.forEach(cb => {
-                L.polyline(cb.path, { 
+                let parsedPath = [];
+                try {
+                    parsedPath = typeof cb.path === 'string' ? JSON.parse(cb.path) : cb.path;
+                } catch (e) {
+                    return; // abaikan jika format rusak
+                }
+                
+                if (!Array.isArray(parsedPath) || parsedPath.length === 0) return;
+
+                // Validasi setiap titik koordinat
+                const validPath = [];
+                parsedPath.forEach(pt => {
+                    if (Array.isArray(pt) && pt.length >= 2) {
+                        const latNum = parseFloat(pt[0]);
+                        const lngNum = parseFloat(pt[1]);
+                        if (!isNaN(latNum) && !isNaN(lngNum)) {
+                            validPath.push([latNum, lngNum]);
+                        }
+                    }
+                });
+                
+                if (validPath.length < 2) return; // minimal 2 titik untuk sebuah garis
+
+                L.polyline(validPath, { 
                     color: cb.color || '#3b82f6', 
                     weight: 3, 
                     opacity: 0.6,
@@ -295,25 +416,75 @@
 
             // Add Customer Markers
             customerMarkers.forEach(c => {
-                const marker = L.circleMarker([c.lat, c.lng], {
+                if (!c.lat || !c.lng) return;
+                const latNum = parseFloat(c.lat);
+                const lngNum = parseFloat(c.lng);
+                if (isNaN(latNum) || isNaN(lngNum)) return;
+
+                const marker = L.circleMarker([latNum, lngNum], {
                     radius: 6,
                     fillColor: c.status === 'active' ? '#10B981' : '#EF4444',
-                    color: "#fff", weight: 1, opacity: 1, fillOpacity: 0.8
+                    color: "#fff", weight: 1, opacity: 1, fillOpacity: 0.8,
+                    customerData: c
                 }).addTo(markers);
 
+                let redamanHtml = '';
+                if (c.redaman !== 'N/A') {
+                    const power = parseFloat(c.redaman);
+                    const isBad = power < -26 || power > -8;
+                    redamanHtml = `<i class="fas fa-signal" style="color: ${isBad ? '#EF4444' : '#10B981'}; width:14px"></i> <span style="font-size:12px" id="rx-tech-${c.id}">Redaman: <b>${c.redaman} dBm</b> (${c.onu_status})</span><br>`;
+                } else {
+                    redamanHtml = `<i class="fas fa-signal" style="color: var(--muted); width:14px"></i> <span style="font-size:12px; color:var(--muted)" id="rx-tech-${c.id}">Redaman: N/A</span><br>`;
+                }
+
                 marker.bindPopup(`
-                    <span class="popup-title">${c.name}</span>
-                    <span class="popup-address">${c.address || '-'}</span><br>
+                    <span class="popup-title" style="margin-bottom:2px">${c.name}</span>
+                    <span class="popup-address" style="display:block; margin-bottom:8px">${c.address || '-'}</span>
+                    
+                    <div style="background: rgba(0,0,0,0.2); padding: 8px 10px; border-radius: 8px; margin-bottom: 8px; line-height: 1.6; border: 1px solid rgba(255,255,255,0.05);">
+                        ${redamanHtml}
+                        <i class="fas fa-share-nodes" style="color:var(--muted); width:14px"></i> <span style="font-size:12px">ODP: <b style="color:var(--text)">${c.odp_name || 'Belum Diatur'}</b></span><br>
+                        <i class="fas fa-box" style="color:var(--muted); width:14px"></i> <span style="font-size:12px">Paket: ${c.package_name || '-'}</span><br>
+                        <i class="fas fa-user-circle" style="color:var(--muted); width:14px"></i> <span style="font-size:12px">PPPoE: ${c.pppoe_username || '-'}</span><br>
+                        <i class="fas fa-phone" style="color:var(--muted); width:14px"></i> <span style="font-size:12px">WA: ${c.phone ? '<a href="https://wa.me/'+c.phone.replace(/\D/g, '')+'" target="_blank" style="color:#3B82F6; text-decoration:none;">'+c.phone+'</a>' : '-'}</span>
+                    </div>
+
                     <div style="margin-top:5px; font-size:10px; font-weight:700; color:${c.status === 'active' ? '#10B981' : '#EF4444'}">
                         ${c.status.toUpperCase()}
                     </div>
-                `);
+                `, { minWidth: 200 });
+
+                // Add Drop Cable (ODP to Customer)
+                if (c.odp_lat && c.odp_lng) {
+                    const odpLatNum = parseFloat(c.odp_lat);
+                    const odpLngNum = parseFloat(c.odp_lng);
+                    if (!isNaN(odpLatNum) && !isNaN(odpLngNum)) {
+                        const dist = map.distance([odpLatNum, odpLngNum], [latNum, lngNum]);
+                        const poly = L.polyline([[odpLatNum, odpLngNum], [latNum, lngNum]], {
+                            color: c.status === 'active' ? '#10B981' : '#EF4444',
+                            weight: 2,
+                            dashArray: '5, 10',
+                            opacity: 0.5,
+                            className: c.status === 'active' ? 'flow-line' : '' // Only animate if active
+                        }).addTo(infraGroup);
+
+                        poly.bindPopup(`
+                            <span class="popup-title">Estimasi Drop Core</span>
+                            <span class="popup-address">Dari: ${c.odp_name || 'ODP'}<br>Ke: ${c.name}</span><br>
+                            <span style="color:#8B5CF6; font-weight:600; font-size:12px">Jarak: ${dist.toFixed(1)} meter</span>
+                        `);
+                    }
+                }
             });
 
             // Highlight Ticket Markers with Pulsing effect (simple circle)
             tickets.forEach(t => {
                 if (t.lat && t.lng) {
-                    const marker = L.circleMarker([t.lat, t.lng], {
+                    const latNum = parseFloat(t.lat);
+                    const lngNum = parseFloat(t.lng);
+                    if (isNaN(latNum) || isNaN(lngNum)) return;
+
+                    const marker = L.circleMarker([latNum, lngNum], {
                         radius: 10,
                         fillColor: t.priority === 'high' ? '#EF4444' : '#3B82F6',
                         color: "#fff", weight: 2, opacity: 1, fillOpacity: 0.6
@@ -326,9 +497,82 @@
                 }
             });
 
+            // Sync Redaman Real-time
+            map.on('popupopen', async function(e) {
+                const layer = e.popup._source;
+                if (layer && layer.options && layer.options.customerData) {
+                    const c = layer.options.customerData;
+                    if (c.olt_id && c.onu_index) {
+                        const el = document.getElementById('rx-tech-' + c.id);
+                        if (el) {
+                            el.innerHTML = `Redaman: <i class="fas fa-circle-notch fa-spin"></i> Sync...`;
+                            try {
+                                const res = await fetch(`/api/onu-info?olt_id=${c.olt_id}&index=${encodeURIComponent(c.onu_index)}`);
+                                const d = await res.json();
+                                if (d.success) {
+                                    const power = parseFloat(d.rx_power);
+                                    const isBad = power < -26 || power > -8;
+                                    el.innerHTML = `Redaman: <b>${d.rx_power} dBm</b> (${d.status})`;
+                                    el.parentElement.querySelector('.fas.fa-signal').style.color = isBad ? '#EF4444' : '#10B981';
+                                } else {
+                                    el.innerHTML = `Redaman: <b>${c.redaman} dBm</b> <span style="color:#EF4444;font-size:10px">[Gagal]</span>`;
+                                }
+                            } catch(err) {
+                                el.innerHTML = `Redaman: <b>${c.redaman} dBm</b> <span style="color:#EF4444;font-size:10px">[Timeout]</span>`;
+                            }
+                        }
+                    }
+                }
+            });
+
             markers.addTo(map);
             if (markers.getLayers().length > 0) {
                 map.fitBounds(markers.getBounds().pad(0.1));
+            }
+
+            // User Location Marker Logic
+            let myLocationMarker = null;
+            document.getElementById('my-location-btn').addEventListener('click', () => {
+                if (!navigator.geolocation) {
+                    showToast('Geolokasi tidak didukung oleh browser Anda', 'error');
+                    return;
+                }
+                
+                showToast('⏳ Mencari lokasi Anda...', 'success');
+                
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lng = position.coords.longitude;
+                        
+                        if (myLocationMarker) {
+                            myLocationMarker.setLatLng([lat, lng]);
+                        } else {
+                            const myLocationIcon = L.divIcon({
+                                html: '<div style="width: 18px; height: 18px; background: #8B5CF6; border: 3px solid #FFFFFF; border-radius: 50%; box-shadow: 0 0 10px rgba(139, 92, 246, 0.8); position: relative;"><div style="position: absolute; top: -9px; left: -9px; width: 30px; height: 30px; border-radius: 50%; background: rgba(139, 92, 246, 0.4); animation: pulse-ping 2s infinite;"></div></div>',
+                                className: 'custom-div-icon', iconSize: [18, 18], iconAnchor: [9, 9]
+                            });
+                            myLocationMarker = L.marker([lat, lng], { icon: myLocationIcon }).addTo(map)
+                                .bindPopup('<b>Lokasi Saya</b>');
+                        }
+                        
+                        map.setView([lat, lng], 18);
+                        showToast('📍 Lokasi Anda ditemukan!', 'success');
+                    },
+                    (error) => {
+                        console.error('[Geoloc] Error:', error.message);
+                        showToast('Gagal mendapatkan lokasi: ' + error.message, 'error');
+                    },
+                    { enableHighAccuracy: true, timeout: 10000 }
+                );
+            });
+            } catch (err) {
+                console.error("[TECH MAP] initMap error:", err);
+                const toast = document.getElementById('toast');
+                if (toast) {
+                    toast.innerHTML = "Map Error: " + err.message;
+                    toast.style.display = 'block';
+                }
             }
         }
 
@@ -378,14 +622,20 @@
             const el = document.getElementById('rx-val-' + id);
             el.textContent = '⏳ ...';
             try {
-                const res = await fetch(`/technician/api/onu-info?olt_id=${oltId}&index=${index}`);
+                const res = await fetch(`/api/onu-info?olt_id=${oltId}&index=${encodeURIComponent(index)}`);
                 const d = await res.json();
                 if (d.success) {
                     el.textContent = d.rx_power + ' dBm';
                     const rx = parseFloat(d.rx_power);
                     el.style.color = rx < -27 ? '#EF4444' : '#10B981';
-                } else { showToast(d.message, 'error'); }
-            } catch (e) { showToast('Failed: ' + e.message, 'error'); }
+                } else { 
+                    el.textContent = 'Gagal';
+                    showToast(d.message, 'error'); 
+                }
+            } catch (e) { 
+                el.textContent = 'Timeout';
+                showToast('Failed: ' + e.message, 'error'); 
+            }
         }
 
         function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.style.color=type==='success'?'#10B981':'#EF4444';t.style.display='block';setTimeout(()=>t.style.display='none',3500);}

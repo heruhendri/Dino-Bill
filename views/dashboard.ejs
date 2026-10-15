@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <%- include('partials/head') %>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/js/chart.min.js"></script>
     <style>
         .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:16px; margin-bottom:24px; }
         .stat-card { background:var(--card-bg); border:1px solid var(--border); border-radius:16px; padding:22px; position:relative; overflow:hidden; transition:transform 0.25s, box-shadow 0.25s; }
@@ -72,7 +72,7 @@
             </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div class="grid-2">
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title">🧾 <%= t.recent_invoices %></h2>
@@ -122,15 +122,19 @@
             <div class="card-header">
                 <h2 class="card-title">🚀 <%= t.network_traffic %></h2>
                 <div style="display:flex; align-items:center; gap:15px;">
+                    <% if (typeof routers !== 'undefined' && routers.length > 1) { %>
+                    <select id="routerSelector" style="background:var(--card-bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:12px; cursor:pointer; outline:none;">
+                        <% routers.forEach(r => { %>
+                            <option value="<%= r.id %>"><%= r.name %></option>
+                        <% }) %>
+                    </select>
+                    <% } else if (typeof routers !== 'undefined' && routers.length === 1) { %>
+                        <input type="hidden" id="routerSelector" value="<%= routers[0].id %>">
+                    <% } else { %>
+                        <input type="hidden" id="routerSelector" value="">
+                    <% } %>
                     <select id="interfaceSelector" style="background:var(--card-bg); color:var(--text); border:1px solid var(--border); border-radius:6px; padding:4px 8px; font-size:12px; cursor:pointer; outline:none;">
-                        <option value="ether1">ether1</option>
-                        <option value="ether2">ether2</option>
-                        <option value="ether3">ether3</option>
-                        <option value="ether4">ether4</option>
-                        <option value="ether5">ether5</option>
-                        <option value="sfp-sfpplus1">sfp-sfpplus1</option>
-                        <option value="combo1">combo1</option>
-                        <option value="bridge">bridge</option>
+                        <option value="">Memuat...</option>
                     </select>
                     <div style="display:flex; gap:15px; font-size:12px;">
                         <span style="color:#10B981; font-weight:600;"><i class="fas fa-arrow-down"></i> <%= t.download %>: <span id="totalRx">0 Mbps</span></span>
@@ -141,7 +145,7 @@
             <canvas id="trafficChart" height="100"></canvas>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;">
+        <div class="grid-2" style="margin-top:20px;">
             <div class="card">
                 <div class="card-header">
                     <h2 class="card-title">📡 <%= t.olt_management %></h2>
@@ -229,17 +233,23 @@ const trafficChart = new Chart(trafficCtx, {
     }
 });
 
+let isFetchingTraffic = false;
 async function updateTraffic() {
+    if (isFetchingTraffic) return;
+    const routerEl = document.getElementById('routerSelector');
+    const ifaceEl = document.getElementById('interfaceSelector');
+    if (!ifaceEl || !ifaceEl.value) return;
+    const routerId = routerEl ? routerEl.value : '';
+    const iface = ifaceEl.value;
+
+    isFetchingTraffic = true;
     try {
-        const iface = document.getElementById('interfaceSelector').value;
-        const res = await fetch(`/api/mikrotik/traffic?interface=${iface}`);
+        const res = await fetch(`/api/mikrotik/traffic?interface=${iface}&router=${routerId}`);
         const d = await res.json();
         if (d.success && d.data.length > 0) {
-            let totalRx = 0; let totalTx = 0;
-            d.data.forEach(r => { totalRx += r.rx; totalTx += r.tx; });
-            
-            const rxMbps = (totalRx / 1000000).toFixed(2);
-            const txMbps = (totalTx / 1000000).toFixed(2);
+            const routerData = d.data.find(r => r.router_id == routerId) || d.data[0];
+            const rxMbps = (routerData.rx / 1000000).toFixed(2);
+            const txMbps = (routerData.tx / 1000000).toFixed(2);
             
             document.getElementById('totalRx').textContent = rxMbps + ' Mbps';
             document.getElementById('totalTx').textContent = txMbps + ' Mbps';
@@ -251,7 +261,58 @@ async function updateTraffic() {
             trafficChart.data.datasets[1].data.push(txMbps);
             trafficChart.update('none');
         }
-    } catch (e) {}
+    } catch (e) {
+    } finally {
+        isFetchingTraffic = false;
+    }
+}
+
+async function loadInterfaces() {
+    const routerEl = document.getElementById('routerSelector');
+    const ifaceSelector = document.getElementById('interfaceSelector');
+    if (!routerEl || !routerEl.value) {
+        ifaceSelector.innerHTML = '<option value="">Router tidak aktif</option>';
+        return;
+    }
+    const routerId = routerEl.value;
+    try {
+        const res = await fetch(`/api/mikrotik/interfaces?router=${routerId}`);
+        const json = await res.json();
+        if (json.success && json.data && json.data.length > 0) {
+            const prevVal = ifaceSelector.value;
+            ifaceSelector.innerHTML = '';
+            json.data.forEach(iface => {
+                const opt = document.createElement('option');
+                opt.value = iface.name;
+                opt.textContent = iface.name + (iface.running ? ' (Running)' : '');
+                ifaceSelector.appendChild(opt);
+            });
+            
+            if (prevVal && Array.from(ifaceSelector.options).some(o => o.value === prevVal)) {
+                ifaceSelector.value = prevVal;
+            } else {
+                const defaultIface = json.data.find(i => i.running && (i.name.toLowerCase().includes('ether') || i.name.toLowerCase().includes('wan')));
+                if (defaultIface) {
+                    ifaceSelector.value = defaultIface.name;
+                }
+            }
+        } else {
+            ifaceSelector.innerHTML = '<option value="ether1">ether1 (Default)</option>';
+        }
+    } catch (e) {
+        ifaceSelector.innerHTML = '<option value="ether1">ether1 (Default)</option>';
+    }
+}
+
+const routerSelectorEl = document.getElementById('routerSelector');
+if (routerSelectorEl && routerSelectorEl.tagName === 'SELECT') {
+    routerSelectorEl.addEventListener('change', async () => {
+        await loadInterfaces();
+        trafficChart.data.datasets[0].data.fill(0);
+        trafficChart.data.datasets[1].data.fill(0);
+        trafficChart.update();
+        updateTraffic();
+    });
 }
 
 document.getElementById('interfaceSelector').addEventListener('change', () => {
@@ -261,8 +322,14 @@ document.getElementById('interfaceSelector').addEventListener('change', () => {
     updateTraffic();
 });
 
-setInterval(updateTraffic, 2000);
-updateTraffic();
+// Initial Load
+(async () => {
+    await loadInterfaces();
+    updateTraffic();
+    setInterval(() => {
+        if (!document.hidden) updateTraffic();
+    }, 5000);
+})();
 </script>
 </body>
 </html>
